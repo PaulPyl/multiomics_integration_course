@@ -1,0 +1,235 @@
+---
+title: "breast.TCGA MOFA"
+author: "Paul-Theodor Pyl"
+date: "2024-10-28"
+output:
+  BiocStyle::html_document:
+    toc_float: true
+    tox_depth: 3
+    df_print: paged
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# BRCA TCGA Data
+
+The Cancer Genome Atlas (TCGA) is a comprehensive and coordinated effort to accelerate our understanding of the molecular basis of cancer through the application of genome analysis technologies, including large-scale genome sequencing. TCGA is a joint effort of the National Cancer Institute (NCI) and the National Human Genome Research Institute (NHGRI), which are both part of the National Institutes of Health, U.S. Department of Health and Human Services.
+
+The TCGA breast cancer cohort: [GDC Data Portal](https://portal.gdc.cancer.gov/projects/TCGA-BRCA)
+
+We will use some of this data to illustrate the use case of DIABLO from the `mixOmics` package, the data is included with the R package sowe can just load it in the session without having to download anything extra.
+
+# Diablo
+
+## SetUp
+
+```{r}
+library(mixOmics) # import the mixOmics library
+data(breast.TCGA) # extract the TCGA data
+
+# use the mirna, mrna and protein expression levels as predictive datasets
+# note that each dataset is measured across the same individuals (samples)
+X1 <- breast.TCGA$data.train$mirna
+X2 <- breast.TCGA$data.train$mrna  
+X3 <- breast.TCGA$data.train$protein
+X <- list(mirna = X1, mrna = X2, protein = X3)
+
+Y <- breast.TCGA$data.train$subtype # use the subtype as the outcome variable
+```
+
+We get three Omics (miRNA, mRNA and Protein) as well as the cancer subtype, which will be out outcome variable.
+
+## Multiblock PLS-DA
+
+First we do the multiblock PLS-DA (`block.plsda`), trying to discriminate the different subtypes from each other based on the three Omics datasets provided.
+
+```{r, fig.width=8}
+result.diablo.tcga <- block.plsda(X, Y) # run the method
+plotLoadings(result.diablo.tcga, comp = 1)
+plotLoadings(result.diablo.tcga, comp = 2)
+plotIndiv(result.diablo.tcga) # plot the samples
+plotVar(result.diablo.tcga) # plot the variables
+```
+
+## Multiblock sPLS-DA (sparse)
+
+`mixOmics` also provides the multiblock sparse PLS-DA function (`block.splsda`), here we need to specify for each component the number of features we are looking for (we will get 2 components here).
+
+```{r, fig.width=8}
+# set the number of features to use for the X datasets
+list.keepX = list(mirna = c(16, 17), mrna = c(18,5), protein = c(5, 5)) 
+
+# run the method
+result.sparse.diablo.tcga <-  block.splsda(X, Y, keepX = list.keepX) 
+
+# plot the contributions of each feature to each dimension
+plotLoadings(result.sparse.diablo.tcga, comp = 1)
+plotLoadings(result.sparse.diablo.tcga, comp = 2)
+plotIndiv(result.sparse.diablo.tcga) # plot the samples
+plotVar(result.sparse.diablo.tcga) # plot the variables
+```
+
+# MOFA on the same Data
+
+```{r}
+library(MOFA2)
+library(ggplot2)
+library(tidyverse)
+```
+## Building the model and setting up the options
+```{r}
+MOFAobject <- create_mofa(lapply(X, t))
+MOFAobject
+plot_data_overview(MOFAobject)
+```
+
+```{r}
+data_opts <- get_default_data_options(MOFAobject)
+data_opts$scale_views <- TRUE
+model_opts <- get_default_model_options(MOFAobject)
+model_opts$num_factors <- 6
+train_opts <- get_default_training_options(MOFAobject)
+train_opts$convergence_mode <- "slow"
+train_opts$seed <- 42
+```
+
+```{r}
+MOFAobject <- prepare_mofa(MOFAobject,
+  data_options = data_opts,
+  model_options = model_opts,
+  training_options = train_opts
+)
+```
+
+```{r}
+MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_breast.TCGA.hdf5", use_basilisk = TRUE)
+```
+
+```{r}
+all(rownames(breast.TCGA$data.train$protein) == samples_metadata(MOFAobject)$sample)
+samples_metadata(MOFAobject) <- samples_metadata(MOFAobject) |> mutate(Subtype = breast.TCGA$data.train$subtype)
+tcgaBRCAclinical <- read_tsv("TCGA-BRCA.Clinical.tsv", col_types = list("age_at_index" = "integer"))
+tcgaBRCAclinical <- tcgaBRCAclinical |> dplyr::select(case_submitter_id, age_at_index, ethnicity, vital_status, ajcc_pathologic_stage, primary_diagnosis)
+tcgaBRCAclinical <- tcgaBRCAclinical |> dplyr::mutate(SampleID = gsub("TCGA-([A-Z0-9]+)-(.*)", "\\2", case_submitter_id)) |> distinct_all()
+write_csv(tcgaBRCAclinical, file = "TCGA-BRCA.Clinical.csv")
+all(samples_metadata(MOFAobject)$sample %in% tcgaBRCAclinical$SampleID)
+samples_metadata(MOFAobject) <- samples_metadata(MOFAobject) |> inner_join(tcgaBRCAclinical, by = join_by(sample == SampleID))
+saveRDS(MOFAobject,"MOFA2_breast.TCGA.rds")
+```
+
+## Factor level analysis
+
+```{r}
+plot_factor_cor(MOFAobject)
+```
+
+```{r}
+plot_variance_explained(MOFAobject, max_r2=15)
+```
+
+```{r}
+plot_variance_explained(MOFAobject, plot_total = TRUE)[[2]]
+```
+
+### Correlation with covariates
+
+```{r}
+correlate_factors_with_covariates(MOFAobject, 
+  covariates = c("Subtype", "age_at_index", "ethnicity", "primary_diagnosis", "vital_status", "ajcc_pathologic_stage"), 
+  plot="log_pval"
+)
+```
+
+The subtype is obviously a very strong correlate so we will redo the plot without it to see what is happening with the other covariates. 
+
+```{r}
+correlate_factors_with_covariates(MOFAobject, 
+  covariates = c("age_at_index", "ethnicity", "primary_diagnosis", "vital_status", "ajcc_pathologic_stage"), 
+  plot="log_pval"
+)
+```
+
+We can see age and primary diagnosis as correlates as well for factors 2 and 5 but the magnitude is a lot smaller than that for the subtype
+
+### Factor 1 by Subtype
+
+```{r}
+plot_factor(MOFAobject, 
+  factors = 1, 
+  color_by = "Subtype"
+)
+
+plot_factor(MOFAobject, 
+  factors = c(1,2,5),
+  color_by = "Subtype",
+  dot_size = 3,        # change dot size
+  dodge = TRUE,           # dodge points with different colors
+  add_violin = TRUE,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+```
+
+The samples are quite obviously separating quite well by subtype. Let's plot the weights for mRNA and Protein to see what drives the factor values.
+
+```{r}
+plot_weights(MOFAobject,
+ view = "mrna",
+ factor = 1,
+ nfeatures = 10,     # Top number of features to highlight
+ scale = TRUE           # Scale weights from -1 to 1
+)
+
+plot_top_weights(MOFAobject,
+ view = "mrna",
+ factor = 1,
+ nfeatures = 10
+)
+```
+
+```{r}
+plot_weights(MOFAobject,
+ view = "protein",
+ factor = 1,
+ nfeatures = 10,     # Top number of features to highlight
+ scale = TRUE           # Scale weights from -1 to 1
+)
+
+plot_top_weights(MOFAobject,
+ view = "protein",
+ factor = 1,
+ nfeatures = 10
+)
+```
+
+### Factors 2 and 5
+
+```{r}
+plot_factor(MOFAobject, 
+  factors = c(2,5), 
+  color_by = "age_at_index"
+)
+```
+
+Age doesn't seem to align all that well with these factors, which was maybe not surprising given that the association strength is so much weaker than that for Subtype with Factor 1.
+
+```{r}
+plot_factor(MOFAobject, 
+  factors = c(2,5), 
+  color_by = "primary_diagnosis"
+)
+
+plot_factor(MOFAobject, 
+  factors = c(1,2,5),
+  color_by = "primary_diagnosis",
+  dot_size = 3,        # change dot size
+  dodge = TRUE,           # dodge points with different colors
+  add_violin = TRUE,      # add violin plots,
+  violin_alpha = 0.25  # transparency of violin plots
+)
+```
+
+The same can be said for the `primary_diagnosis` covariate.
+

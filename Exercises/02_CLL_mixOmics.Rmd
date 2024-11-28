@@ -1,0 +1,85 @@
+---
+title: "Applying mixOmics Diablo to the Chronic Lymphocytic Leukemia cohort"
+author: 
+- name: "Paul-Theodor Pyl"
+  affiliation: "SciLifeLab, NBIS, Sweden"
+  email: "paul-theodor.pyl@scilifelab.se"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc_float: true
+---
+
+**This document is an attempt to replicate the analysis form the one linked on the MOFA webpage using mixOmics Diablo approach instead. Find the original here: https://raw.githack.com/bioFAM/MOFA2_tutorials/master/R_tutorials/CLL.html**
+
+# Introduction
+This vignette shows how to use MOFA+ on the bulk multi-omics data set that was used in the [first publication of MOFA](https://msb.embopress.org/cgi/doi/10.15252/msb.20178124) and the original vignette of the [MOFA package](https://bioconductor.org/packages/release/bioc/vignettes/MOFA/inst/doc/MOFA_example_CLL.html).  
+
+Briefly, the data consists of four omics including DNA methylation, RNA-seq, somatic mutations and drug response data from blood for N=200 patients with Chronic Lymphocytic Leukemia (CLL). The data set is explained in detail [in this article](https://www.jci.org/articles/view/93801) and is publicly available [here](http://bioconductor.org/packages/release/data/experiment/html/BloodCancerMultiOmics2017.html)
+  
+# Load libraries and data
+
+```{r, message=FALSE}
+library(mixOmics)
+library(MOFAdata)
+library(data.table)
+library(ggplot2)
+library(tidyverse)
+library(utils)
+library(MASS)
+```
+
+Data is stored as a list of matrices. Features are stored in the rows and samples in the columns
+```{r}
+utils::data("CLL_data")       
+lapply(CLL_data,dim)
+```
+
+Sample metadata are stored as a data.frame. Important columns are:  
+
+- **Gender**: m (male), f (female)
+- **Age**: age in years
+- **TTT**: time (in years) which passed from taking the sample to the next treatment
+- **TTD**: time (in years) which passed from taking the sample to patients' death
+- **treatedAfter**: (TRUE/FALSE)
+- **Died**: whether the patient died (TRUE/FALSE)
+
+The full meta data can be obtained from the Bioconductor package `BloodCancerMultiOmics2017` as `data("patmeta")`.
+```{r}
+CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
+```
+
+# Block PLSA-Da
+
+
+```{r}
+theY <- CLL_metadata |> filter(!is.na(IGHV))
+theX <- lapply(CLL_data, function(x) {
+  t(x[,theY$sample])
+}) # DIABLO wants samples as rows
+result.diablo.tcga <- block.plsda(X = theX, Y = theY$IGHV) # run the method
+plotIndiv(result.diablo.tcga) # plot the samples
+plotVar(result.diablo.tcga) # plot the variables
+```
+
+
+## Add GeneNames to the mRNA loadings to make it easier to interprete
+```{r}
+mRNA_loadings <- result.diablo.tcga$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
+```
+
+```{r}
+#BiocManager::install(c("ensembldb", "AnnotationHub"))
+library(AnnotationHub)
+ah <- AnnotationHub()
+ahDb <- query(ah, pattern = c("Homo Sapiens", "EnsDb"))
+ensDb <- ah[["AH116860"]]
+GeneNames <- mapIds(ensDb, mRNA_loadings$EnsemblGeneID, keytype = "GENEID", column = "GENENAME")
+mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2)
+```
+
+## Investigate mutation loading
+```{r}
+mutations_loadings <- result.diablo.tcga$loadings$Mutations |> as_tibble(rownames = "GeneName") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
+mutations_loadings |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2)
+```

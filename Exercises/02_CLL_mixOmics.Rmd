@@ -57,15 +57,20 @@ theY <- CLL_metadata |> filter(!is.na(IGHV))
 theX <- lapply(CLL_data, function(x) {
   t(x[,theY$sample])
 }) # DIABLO wants samples as rows
-result.diablo.tcga <- block.plsda(X = theX, Y = theY$IGHV) # run the method
-plotIndiv(result.diablo.tcga) # plot the samples
-plotVar(result.diablo.tcga) # plot the variables
+result.diablo.cll <- block.plsda(X = theX, Y = theY$IGHV, ncomp = 5) # run the method
+plotIndiv(result.diablo.cll) # plot the samples
+plotVar(result.diablo.cll) # plot the variables
 ```
 
+```{r}
+for(cidx in seq(1,5)){
+  plotLoadings(result.diablo.cll, comp = cidx)
+}
+```
 
 ## Add GeneNames to the mRNA loadings to make it easier to interprete
 ```{r}
-mRNA_loadings <- result.diablo.tcga$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
+mRNA_loadings <- result.diablo.cll$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
 ```
 
 ```{r}
@@ -80,6 +85,7 @@ mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> dplyr::filter(ab
 
 ## Investigate mutation loading
 ```{r}
-mutations_loadings <- result.diablo.tcga$loadings$Mutations |> as_tibble(rownames = "GeneName") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
-mutations_loadings |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2)
+mutations_loadings <- result.diablo.cll$loadings$Mutations |> as_tibble(rownames = "GeneName")
+lowestRank <- mutations_loadings |> dplyr::select(starts_with("comp")) |> mutate(across(everything(), ~ rank(-abs(.x)))) |> rowwise() |> mutate(lowestRank = min(c_across(everything()))) |> pull(lowestRank)
+mutations_loadings |> mutate(lowestRank = lowestRank) |> dplyr::filter(lowestRank <= 2) |> arrange(lowestRank)
 ```

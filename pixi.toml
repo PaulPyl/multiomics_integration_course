@@ -1,0 +1,19 @@
+[project]
+name = "KIMN20_2024"
+version = "0.1.0"
+description = "Add a short description here"
+authors = ["Paul-Theodor Pyl <paul-theodor.pyl@scilifelab.se>"]
+channels = ["conda-forge"]
+platforms = ["osx-64"]
+
+[tasks]
+RStudio = "open -n -a RStudio"
+Install = "R -e 'BiocManager::install(\"mixOmics\")'"
+
+[dependencies]
+r-survminer = ">=0.4.9,<0.5"
+r-tidyverse = ">=2.0.0,<2.1"
+r-psych = ">=2.4.3,<2.5"
+r-magick = ">=2.8.5,<2.9"
+r-randomforest = ">=4.7_1.2,<4.7_2"
+r-biocmanager = ">=1.30.25,<1.31"

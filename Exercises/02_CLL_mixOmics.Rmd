@@ -80,7 +80,7 @@ ah <- AnnotationHub()
 ahDb <- query(ah, pattern = c("Homo Sapiens", "EnsDb"))
 ensDb <- ah[["AH116860"]]
 GeneNames <- mapIds(ensDb, mRNA_loadings$EnsemblGeneID, keytype = "GENEID", column = "GENENAME")
-mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2)
+mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2) |> relocate(GeneName)
 ```
 
 ## Investigate mutation loading

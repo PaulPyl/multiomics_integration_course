@@ -79,6 +79,7 @@ library(MOFA2)
 library(ggplot2)
 library(tidyverse)
 ```
+
 ## Building the model and setting up the options
 ```{r}
 MOFAobject <- create_mofa(lapply(X, t))

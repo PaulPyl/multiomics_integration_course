@@ -13,7 +13,7 @@ output:
 **This document is an attempt to replicate the analysis form the one linked on the MOFA webpage using mixOmics Diablo approach instead. Find the original here: https://raw.githack.com/bioFAM/MOFA2_tutorials/master/R_tutorials/CLL.html**
 
 # Introduction
-This vignette shows how to use MOFA+ on the bulk multi-omics data set that was used in the [first publication of MOFA](https://msb.embopress.org/cgi/doi/10.15252/msb.20178124) and the original vignette of the [MOFA package](https://bioconductor.org/packages/release/bioc/vignettes/MOFA/inst/doc/MOFA_example_CLL.html).  
+This document shows how to use mixOmics DIABLO on the bulk multi-omics data set that was used in the [first publication of MOFA](https://msb.embopress.org/cgi/doi/10.15252/msb.20178124) and the original vignette of the [MOFA package](https://bioconductor.org/packages/release/bioc/vignettes/MOFA/inst/doc/MOFA_example_CLL.html).  
 
 Briefly, the data consists of four omics including DNA methylation, RNA-seq, somatic mutations and drug response data from blood for N=200 patients with Chronic Lymphocytic Leukemia (CLL). The data set is explained in detail [in this article](https://www.jci.org/articles/view/93801) and is publicly available [here](http://bioconductor.org/packages/release/data/experiment/html/BloodCancerMultiOmics2017.html)
   
@@ -51,26 +51,74 @@ CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sampl
 
 # Block PLSA-Da
 
-
 ```{r}
+nComp = 3 #Number of components for DIABLO to fit
 theY <- CLL_metadata |> filter(!is.na(IGHV))
 theX <- lapply(CLL_data, function(x) {
   t(x[,theY$sample])
 }) # DIABLO wants samples as rows
-result.diablo.cll <- block.plsda(X = theX, Y = theY$IGHV, ncomp = 5) # run the method
-plotIndiv(result.diablo.cll) # plot the samples
-plotVar(result.diablo.cll) # plot the variables
+result.diablo.cll <- block.plsda(X = theX, Y = theY$IGHV, ncomp = nComp) # run the method
 ```
 
+```{r, fig.height = 8}
+plotIndiv(result.diablo.cll) # plot the samples
+```
+
+We can see that most views separate the two groups (IGHV positive vs. IGHV negative) quite well
+
+```{r, fig.height = 8}
+plotVar(result.diablo.cll, comp = c(1,2)) # plot the variables
+plotVar(result.diablo.cll, comp = c(1,3)) # plot the variables
+plotVar(result.diablo.cll, comp = c(2,3)) # plot the variables
+```
+
+We can see that component two has trisomy12 as a really important feature, that is in line with the MOFA analysis.
+
+```{r, fig.height = 8}
+for(cidx in seq(1,nComp)){
+  plotLoadings(result.diablo.cll, comp = cidx)
+}
+```
+These plots are not super useful like this yet so let us add some regularisation (or, more accurately, a selection of the desired number of output features) and rerun the analysis in sparse mode.
+
 ```{r}
-for(cidx in seq(1,5)){
+nFeatures <- 10
+toKeep <- lapply(theX, function(x) rep(nFeatures, nComp))
+print(toKeep)
+```
+
+We will tell DIABLO to keep 10 features in each of the three components, this is a bit arbitrary and we should investigate the results carefully to adapt these numbers to our desired output, i.e. some components should probably retain more or less features in some of the omics we put in. We will use this general limit of 610 for all omics and components for now.
+
+```{r}
+result.diablo.cll <- block.splsda(X = theX, Y = theY$IGHV, ncomp = nComp, keepX = toKeep) # run the method
+```
+
+
+```{r, fig.height = 8}
+plotIndiv(result.diablo.cll) # plot the samples
+```
+It seems that limiting the number of features has made things clearere for the mutations and methylation  at least.
+
+```{r, fig.height = 8}
+plotVar(result.diablo.cll, comp = c(1,2)) # plot the variables
+plotVar(result.diablo.cll, comp = c(1,3)) # plot the variables
+plotVar(result.diablo.cll, comp = c(2,3)) # plot the variables
+```
+
+```{r, fig.height = 8}
+for(cidx in seq(1,nComp)){
   plotLoadings(result.diablo.cll, comp = cidx)
 }
 ```
 
+We can also see that the signal from trisomy12 has actually been split over comonents 2 and 3, maybe not what we really want and an indication that two components would have been enough?
+
 ## Add GeneNames to the mRNA loadings to make it easier to interprete
 ```{r}
-mRNA_loadings <- result.diablo.cll$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID") |> mutate(abs1 = abs(comp1), abs2 = abs(comp2), absRank1 = rank(-abs1), absRank2 = rank(-abs2))
+mRNA_loadings <- result.diablo.cll$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID")
+lowestRank <- mRNA_loadings |> dplyr::select(starts_with("comp")) |> mutate(across(everything(), ~ rank(-abs(.x)))) |> rowwise() |> mutate(lowestRank = min(c_across(everything()))) |> pull(lowestRank)
+mRNA_loadings <- mRNA_loadings |> mutate(lowestRank = lowestRank) 
+mRNA_loadings |> dplyr::filter(lowestRank <= 2) |> arrange(lowestRank)
 ```
 
 ```{r}
@@ -80,8 +128,9 @@ ah <- AnnotationHub()
 ahDb <- query(ah, pattern = c("Homo Sapiens", "EnsDb"))
 ensDb <- ah[["AH116860"]]
 GeneNames <- mapIds(ensDb, mRNA_loadings$EnsemblGeneID, keytype = "GENEID", column = "GENENAME")
-mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> dplyr::filter(absRank1 <= 10 | absRank2 <= 10) |> arrange(absRank1, absRank2) |> relocate(GeneName)
+mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> relocate(GeneName) |> dplyr::filter(lowestRank <= 3) |> arrange(lowestRank)
 ```
+Here we have a table of the genes whose expression values are contributing a lot to the components. We could go ahead and check some of those genes for their connections to CLL.
 
 ## Investigate mutation loading
 ```{r}
@@ -89,3 +138,4 @@ mutations_loadings <- result.diablo.cll$loadings$Mutations |> as_tibble(rownames
 lowestRank <- mutations_loadings |> dplyr::select(starts_with("comp")) |> mutate(across(everything(), ~ rank(-abs(.x)))) |> rowwise() |> mutate(lowestRank = min(c_across(everything()))) |> pull(lowestRank)
 mutations_loadings |> mutate(lowestRank = lowestRank) |> dplyr::filter(lowestRank <= 2) |> arrange(lowestRank)
 ```
+Here we see our expected mutations, IGHV is of course the strongest association since we literally split the dataset by it but trisomy12 as well as TP53 and the deletion on chromosme 11 (del11q22.3) could be interesting in this context as well.

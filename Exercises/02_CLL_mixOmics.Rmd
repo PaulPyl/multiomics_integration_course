@@ -97,7 +97,7 @@ result.diablo.cll <- block.splsda(X = theX, Y = theY$IGHV, ncomp = nComp, keepX 
 ```{r, fig.height = 8}
 plotIndiv(result.diablo.cll) # plot the samples
 ```
-It seems that limiting the number of features has made things clearere for the mutations and methylation  at least.
+It seems that limiting the number of features has made things clearer for the mutations and methylation data at least.
 
 ```{r, fig.height = 8}
 plotVar(result.diablo.cll, comp = c(1,2)) # plot the variables
@@ -111,14 +111,14 @@ for(cidx in seq(1,nComp)){
 }
 ```
 
-We can also see that the signal from trisomy12 has actually been split over comonents 2 and 3, maybe not what we really want and an indication that two components would have been enough?
+We can also see that the signal from trisomy12 has actually been split over components 2 and 3, maybe not what we really want and an indication that two components would have been enough?
 
 ## Add GeneNames to the mRNA loadings to make it easier to interprete
 ```{r}
 mRNA_loadings <- result.diablo.cll$loadings$mRNA |> as_tibble(rownames = "EnsemblGeneID")
 lowestRank <- mRNA_loadings |> dplyr::select(starts_with("comp")) |> mutate(across(everything(), ~ rank(-abs(.x)))) |> rowwise() |> mutate(lowestRank = min(c_across(everything()))) |> pull(lowestRank)
 mRNA_loadings <- mRNA_loadings |> mutate(lowestRank = lowestRank) 
-mRNA_loadings |> dplyr::filter(lowestRank <= 2) |> arrange(lowestRank)
+mRNA_loadings |> dplyr::filter(lowestRank <= 3) |> arrange(lowestRank)
 ```
 
 ```{r}
@@ -138,4 +138,4 @@ mutations_loadings <- result.diablo.cll$loadings$Mutations |> as_tibble(rownames
 lowestRank <- mutations_loadings |> dplyr::select(starts_with("comp")) |> mutate(across(everything(), ~ rank(-abs(.x)))) |> rowwise() |> mutate(lowestRank = min(c_across(everything()))) |> pull(lowestRank)
 mutations_loadings |> mutate(lowestRank = lowestRank) |> dplyr::filter(lowestRank <= 2) |> arrange(lowestRank)
 ```
-Here we see our expected mutations, IGHV is of course the strongest association since we literally split the dataset by it but trisomy12 as well as TP53 and the deletion on chromosme 11 (del11q22.3) could be interesting in this context as well.
+Here we see our expected mutations, IGHV is of course the strongest association since we literally split the dataset by it, but trisomy12 as well as TP53 and the deletion on chromosme 11 (del11q22.3) could be interesting in this context as well.

@@ -219,17 +219,17 @@ END OF THE FITTING STORY. The next two slides change subject.
 
 - We hand over **only the data**
 - *"What structure is in here?"*
-- Clustering: hierarchical
-- Embedding: **PCA**
+- Groups &rarr; **clustering**: hierarchical, k-means
+- Axes &rarr; **PCA**
 :::
 
 ::: {.column width="50%"}
 ### Supervised
 
 - We also hand over **the answer** &mdash; labels, a response
-- *"What separates these groups?"*
-- Clustering: k-means
-- Embedding: **PLS-DA**
+- *"What separates the groups I named?"*
+- Groups &rarr; **classification**: k-NN, LDA, random forest
+- Axes &rarr; **PLS-DA**
 :::
 
 ::::
@@ -241,12 +241,23 @@ END OF THE FITTING STORY. The next two slides change subject.
 :::
 
 ::: notes
-The fragment is the bridge back to the fitting slides: both methods build
+The rows are tasks, not algorithms: discover groups vs. predict groups you
+already named, and find axes without labels vs. with them.
+
+Both clustering examples are on the unsupervised side on purpose. Earlier
+versions of this slide put k-means opposite hierarchical as the "supervised"
+clustering example, which is wrong: k-means never sees a label, and handing it k
+is not supervision. Clustering means DISCOVERING groups; once you have labels the
+task is classification. If someone asks about "supervised clustering", the real
+answers are constrained or semi-supervised clustering (must-link / cannot-link
+constraints, or a few labelled points) - worth naming, not worth a detour here.
+
+Random forest is a useful one to name: lab 01 fits exactly that on the MOFA
+factors to impute IGHV status.
+
+The fragment is the bridge back to the fitting slides: both PCA and PLS-DA build
 weighted linear combinations of features. What changes is what they optimise
 towards.
-
-k-means is "supervised" only in the weak sense that you hand it k. Do not
-over-defend that if someone pushes - the real contrast is the next slide.
 :::
 
 ## The same data, both ways

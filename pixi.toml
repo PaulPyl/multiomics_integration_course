@@ -1,0 +1,58 @@
+[workspace]
+name = "KIMN20_2026"
+version = "2026.0.0"
+description = "Multi-Omics Integration — KIMN20 lecture and labs (MOFA2 / mixOmics DIABLO)"
+authors = ["Paul-Theodor Pyl <paul-theodor.pyl@scilifelab.se>"]
+channels = ["conda-forge", "bioconda"]
+# bioconda publishes no win-64 builds, so Windows students use WSL2
+# (or a course server). See README.
+platforms = ["osx-arm64", "osx-64", "linux-64"]
+
+[tasks]
+# One-time step: install the handful of R packages that are not on conda.
+# MOFA2 is not published on bioconda, so it comes from Bioconductor into a
+# project-local library (see .Rprofile).
+setup = "Rscript setup/install_r_extras.R"
+# Render every lab to HTML (instructor versions included).
+render = "Rscript -e 'for (f in list.files(\"labs\", pattern = \"[.]Rmd$\", full.names = TRUE)) rmarkdown::render(f)'"
+check = "Rscript setup/check_env.R"
+rstudio = "open -n -a RStudio ."
+
+[dependencies]
+# --- core ---
+r-base = "4.5.*"
+r-tidyverse = "*"
+"r-data.table" = "*"
+r-ggplot2 = "*"
+r-rmarkdown = "*"
+r-knitr = "*"
+r-here = "*"
+
+# --- lab-specific R ---
+r-randomforest = "*"
+r-survival = "*"
+r-survminer = "*"
+r-pheatmap = "*"
+r-psych = "*"
+r-reticulate = "*"
+r-biocmanager = "*"
+
+# --- Bioconductor from bioconda ---
+bioconductor-mixomics = "*"
+bioconductor-biocstyle = "*"
+# NOTE: bioconductor-mofadata is deliberately NOT listed here. On bioconda it is
+# a data package that installs itself from a post-link script, and pixi disables
+# post-link scripts by default -- the package would resolve and link but the R
+# library would never actually contain it. It is installed by `pixi run setup`
+# instead, alongside MOFA2.
+bioconductor-rhdf5 = "*"
+bioconductor-delayedarray = "*"
+bioconductor-hdf5array = "*"
+bioconductor-annotationhub = "*"
+bioconductor-ensembldb = "*"
+
+# --- MOFA python backend ---
+# Installed directly so MOFA2 can use this interpreter via reticulate and we
+# never need basilisk to download its own environment at lab time.
+mofapy2 = "*"
+python = "3.12.*"

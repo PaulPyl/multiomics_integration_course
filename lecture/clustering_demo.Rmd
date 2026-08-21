@@ -1,0 +1,32 @@
+---
+title: "Clustering"
+author: "Paul-Theodor Pyl"
+date: "2024-11-01"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+require(tidyverse)
+require(ggplot2)
+data(iris)
+iris
+```
+
+```{r fig.width=6, fig.height=4}
+hc_in <- iris |> sample_n(size = 30) 
+d <- dist(hc_in|> select(-Species) )
+hc <- hclust(d)
+hc$labels <- hc_in$Species
+plot(hc, hang = -1, cex = 0.6)
+```
+
+```{r}
+km <- kmeans(hc_in |> select(-Species), centers = 3)
+hc_in |> mutate(kMeansCluster = km$cluster) |> group_by(kMeansCluster, Species) |> tally() |> spread(Species, n)
+hc_in |> mutate(kMeansCluster = km$cluster) |> ggplot(mapping = aes(x = Petal.Length, y = Petal.Width, size = Sepal.Length, shape = Species, colour = paste0("cl_", kMeansCluster))) + geom_point() + theme_bw() + scale_color_brewer(palette = "Set1") + scale_shape(solid = TRUE)
+```

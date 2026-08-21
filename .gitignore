@@ -1,0 +1,22 @@
+# pixi
+.pixi/
+*.lock.bak
+
+# project-local R library populated by `pixi run setup`
+.Rlibrary/
+.Rhistory
+.RData
+.Rproj.user/
+
+# rendered output
+labs/*.html
+labs/*_files/
+labs/*_cache/
+lecture/*.html
+assessment/*.html
+
+# large / regenerable model artifacts
+*.hdf5
+*.rds
+*.RDs
+!data/**/*.rds

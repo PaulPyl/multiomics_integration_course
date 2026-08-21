@@ -43,6 +43,11 @@ r-survival = "*"
 r-survminer = "*"
 r-pheatmap = "*"
 r-magick = "*"   # knitr/BiocStyle figure cropping
+
+# --- lecture figures (rendered in slides.qmd, not shipped as images) ---
+r-glmnet = "*"
+r-patchwork = "*"
+r-ggrepel = "*"
 r-psych = "*"
 r-reticulate = "*"
 r-biocmanager = "*"

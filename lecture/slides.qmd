@@ -15,111 +15,187 @@ format:
     embed-resources: true
     code-line-numbers: false
     fig-align: center
+    fig-format: svg
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: false
 ---
+
+```{r}
+#| label: setup
+source("_figures.R")
+```
 
 ## Learning objectives
 
 ::: {.incremental}
-- The principle of multi-omic integration
-- **Supervised vs. unsupervised** approaches, and regularisation
-- The concept behind **MOFA**, and how to read its output
-- The concept behind **DIABLO**, and (s)PLS-DA
-- Applying both to real data &mdash; CLL and TCGA-BRCA &mdash; in the lab
+- What an "omic" is, for our purposes: **a matrix**
+- How a linear model is **fitted** &mdash; and what a **weight** means
+- What **regularisation** buys you, and what it costs
+- **Supervised vs. unsupervised**, and why you would pick either
+- **MOFA** and **DIABLO**: one of each, on the same data, in the lab
 :::
 
 ::: notes
-90 minutes total. Three scheduled question pauses: after the framing block
-(~min 20), after the concepts block (~min 45), after MOFA (~min 68).
-Keep this slide to 30 seconds &mdash; the recap at the end is where we check them off.
+90 minutes. Three question pauses, marked in the notes: after the framing
+(~min 15), after the concepts block (~min 45), after MOFA (~min 72).
+
+Keep this slide to 30 seconds. The recap near the end is where we check these off.
 :::
 
 ## What is an omic?
 
 :::: {.columns}
 
-::: {.column width="45%"}
+::: {.column width="46%"}
 An **abstraction**: data about a set of samples.
 
-- Typically large
+- Rows are **features**, columns are **samples**
 - Quantitative *or* qualitative
 - Sample sets should overlap across omics
 - Some missingness is permissible
 
 ::: {.fragment}
-It's just a **bunch of matrices** sharing columns (samples) and differing in
-rows (features).
+Just a **stack of matrices** sharing their sample axis.
+
+**Thousands of features, tens to hundreds of samples.** Hold onto that &mdash;
+it is the whole reason for the next three slides.
 :::
 :::
 
-::: {.column width="55%"}
-![](figures/omics_matrices.png){height="480"}
+::: {.column width="54%"}
+![](figures/omics_matrices.png){height="470"}
 :::
 
 ::::
 
 ::: notes
-This is the single most important slide for the lab to make sense: everything
-downstream is "matrices with shared columns".
+Everything downstream is "matrices that share their columns". If this slide does
+not land, nothing else will.
 
-Assay types to name out loud rather than list on the slide: RNA/DNA-seq
+Assay types to name out loud rather than put on the slide: RNA/DNA-seq
 (expression, SNVs, SVs), proteomics (MS, antibody), methylation, chromatin
-interaction (HiC, 4C), immunohistochemistry, drug response, microbiome.
-Ask the room which ones they work with &mdash; cheap engagement, and it tells you
-where to pitch the rest.
-:::
+interaction (HiC, 4C), immunohistochemistry, drug response, microbiome. Ask the
+room which they work with - cheap engagement, and it tells you where to pitch.
 
-## Types of integration
+The fragment plants p >> n. Say the numbers: 5000 genes, 200 patients. That
+asymmetry is what makes regularisation necessary rather than optional.
 
-![](figures/integration_types.png){height="440"}
-
-::: {.caption}
-Illustration from mixomics.org
-:::
-
-We will focus on **N-integration**: multiple omics, same samples.
-
-::: notes
-Multiple studies = P-integration. Multiple omics = N-integration. Both = MINT.
-
-N-integration is what people usually mean by "multi-omics integration".
-P- and N-integration both come down to projecting datasets into a common space.
-
-END OF FRAMING BLOCK - pause for questions here (~min 20).
+PAUSE FOR QUESTIONS (~min 15).
 :::
 
 ## Some useful concepts {.section-divider .center}
 
-## Regularisation
+## Fitting a linear model
 
-:::: {.columns}
+```{r}
+#| label: linear-model
+#| fig-width: 9.6
+#| fig-height: 3.85
+fig_linear_model()
+```
 
-::: {.column width="55%"}
-![](figures/lasso_objective.png){width="100%"}
-
-**LASSO**: penalise the weights.
-
-- Encourages *meaningful* variables to keep non-zero weight
-- Snaps everything else to exactly zero
-- &rArr; a sparse, interpretable model
-:::
-
-::: {.column width="45%"}
-**How do you pick $\lambda$?** Or how many features to keep?
-
-![](figures/grid_search.png){height="330"}
-
-Grid search plus a goodness-of-fit measure.
-:::
-
-::::
+The orange gaps are the **residuals** &mdash; what the model got wrong. Fitting
+means choosing the weights $b$ so that $Xb$ lands as close to $y$ as possible.
+A **weight** says how much one feature contributes.
 
 ::: notes
-This slide absorbed the separate "Parameter Optimisation" slide from 2025.
-The point to land: regularisation buys interpretability, but it introduces a
-parameter you now have to choose, and that choice is usually made by searching.
+This is the foundation slide. Do not rush it, and do not assume the room has
+seen it before - some will have, some will not.
 
-Keep it short here - the students will actually do this in the lab, where they
-pick the number of factors themselves rather than accepting a handed-down value.
+Left panel: one feature, one line. The orange segments are the residuals. The
+fit is whatever choice of b makes them collectively small - "least squares"
+because we add up their squares.
+
+Right panel: the same statement with many features at once. y is the outcome,
+X is the data matrix from the previous slide, b holds one weight per feature.
+Point out that this is the SAME matrix picture, and that we will see it once
+more when MOFA shows up.
+
+The word "weight" is the one to make stick - it comes back on every remaining
+slide.
+:::
+
+## Too many features
+
+With **thousands of features and few samples**, plain least squares fails: there
+are more knobs than data to pin them down. It fits noise perfectly and
+generalises badly.
+
+::: {.fragment}
+**Fix: add a penalty on the weights.** LASSO minimises
+
+$$\underbrace{\tfrac{1}{N}\lVert y - Xb \rVert_2^2}_{\text{fit the data}} \;+\; \underbrace{\lambda \lVert b \rVert_1}_{\text{keep weights small}}$$
+
+$\lambda$ sets the exchange rate between the two. Turn it up and weights go to
+**exactly zero** &mdash; the model selects features for you.
+:::
+
+::: notes
+Tie straight back to the previous slide: same y, same X, same b - we are only
+adding a second term to the thing we minimise.
+
+Do not derive anything. The two-term structure is the whole message: one term
+wants to fit, the other wants to stay simple, and lambda decides who wins.
+
+"Exactly zero" is the part worth stressing, and it is what the next slide shows.
+That is also what "sparse" means when MOFA and DIABLO say it later.
+:::
+
+## What the penalty actually does
+
+```{r}
+#| label: lasso-paths
+#| fig-width: 9.9
+#| fig-height: 4.45
+fig_lasso_paths()
+```
+
+**Orange** = the 5 features that really matter, **grey** = the other 35. As
+$\lambda$ grows (rightwards) the noise weights hit **exactly zero** first.
+Feature selection falls out of the fit.
+
+::: notes
+Simulated: 60 samples, 40 features, only 5 of which do anything.
+
+Left: each line is one feature's weight as lambda grows. At the left edge
+everything is non-zero - the model has happily used all 40, including the 35
+that are pure noise. Move right and the noise features collapse to zero first
+and stay there; the 5 real ones survive longest.
+
+Right: the count of surviving weights. This is feature selection falling out of
+the fitting procedure rather than being done by hand beforehand.
+
+Ask: which lambda would you pick? Let them answer, then the next slide.
+:::
+
+## Choosing the penalty
+
+```{r}
+#| label: choosing-lambda
+#| fig-width: 9.9
+#| fig-height: 4.45
+fig_choosing_lambda()
+```
+
+Fit on part of the data, score on the part you held back, repeat over a grid.
+With two knobs, search the grid &mdash; **circle = best combination**.
+
+::: notes
+Left: hold out part of the data, fit on the rest, measure error on what was held
+out, repeat across a grid of lambda. Too little penalty overfits, too much
+underfits, and the minimum is the compromise. Note the curve is flat near the
+bottom - the choice is not knife-edge.
+
+Right: with two parameters you search a grid. This is exactly what happens in
+the lab when DIABLO wants a number of features per omic - and it is why those
+keepX numbers in the tutorial look arbitrary. Somebody searched.
+
+In lab 03b they choose a parameter themselves rather than accepting one.
+
+END OF THE FITTING STORY. The next two slides change subject.
 :::
 
 ## To supervise or not to supervise
@@ -129,7 +205,9 @@ pick the number of factors themselves rather than accepting a handed-down value.
 ::: {.column width="50%"}
 ### Unsupervised
 
-The data is the only thing we provide (plus some parameters).
+We hand over **only the data**.
+
+"What structure is in here?"
 
 - Clustering: hierarchical
 - Embedding: **PCA**
@@ -138,8 +216,9 @@ The data is the only thing we provide (plus some parameters).
 ::: {.column width="50%"}
 ### Supervised
 
-We add information: group labels, a response variable, the number of
-components we want.
+We also hand over **the answer** &mdash; group labels, a response.
+
+"What separates *these* groups?"
 
 - Clustering: k-means
 - Embedding: **PLS-DA**
@@ -147,21 +226,22 @@ components we want.
 
 ::::
 
-. . .
-
-::: {.callout-note appearance="simple"}
-**PLS** finds a linear regression model by projecting predictors and observables
-into a new space &mdash; unlike PCA, it maximises covariance *with the response*
-rather than variance within X. **PLS-DA** is PLS where the response is categorical.
+::: {.fragment}
+**PCA** finds directions of maximum variance in $X$. **PLS-DA** finds directions
+that maximise covariance *with the labels* $y$ &mdash; same linear-combination
+machinery, different target.
 :::
 
 ::: notes
-k-means is "supervised" here only in the weak sense that you hand it k.
-Do not over-defend that framing if someone pushes back - the real contrast is
-the next slide.
+The fragment is the bridge back to the fitting slides: both methods build
+weighted linear combinations of features. What changes is what they optimise
+towards.
+
+k-means is "supervised" only in the weak sense that you hand it k. Do not
+over-defend that if someone pushes - the real contrast is the next slide.
 :::
 
-## PCA vs PLS-DA on the same data
+## The same data, both ways
 
 ![](figures/pca_vs_plsda.png){width="82%"}
 
@@ -188,42 +268,70 @@ the next slide.
 PLS-DA separates the groups beautifully &mdash; and explains **less** variance.
 
 ::: notes
-This is the most important slide in the deck. Let it breathe.
+The most important slide in the deck. Let it breathe.
 
-"Why would I ever not use the supervised method, it looks so much better?"
-Because it looks better *by construction* - you told it the answer. The variance
-explained numbers are lower precisely because it is optimising for separation,
-not for variance.
+"Why would I ever not use the supervised one, it looks so much better?" Because
+it looks better BY CONSTRUCTION - you told it the answer. The variance-explained
+numbers are lower precisely because it is optimising for separation instead.
 
-And: you can only use it when you already know the groups. In discovery mode
-you don't.
+And you can only use it when you already know the groups. In discovery mode you
+do not - which is the entire case for the unsupervised method we meet next.
 
-END OF CONCEPTS BLOCK - pause for questions here (~min 45).
+PAUSE FOR QUESTIONS (~min 45).
 :::
 
 ## Multi-omics N-integration {.section-divider .center}
+
+## Which kind of integration?
+
+:::: {.columns}
+
+::: {.column width="62%"}
+![](figures/integration_types.png){height="420"}
+
+::: {.caption}
+Illustration from mixomics.org
+:::
+:::
+
+::: {.column width="38%"}
+**N-integration** &mdash; several omics, **the same samples**. This is us, and
+the rest of the lecture.
+
+*P-integration* is the other axis: the same omic across several studies.
+
+Note the first split in each tree: **classification or not** &mdash; supervised
+or unsupervised, again.
+:::
+
+::::
+
+::: notes
+This slide sits here, not earlier, because the figure names PLS-DA, block
+PLS-DA, PCA and rCCA - and now those words mean something.
+
+Multiple studies = P. Multiple omics = N. Both = MINT.
+
+The two methods we cover are one from each branch of the N column: block PLS-DA
+is DIABLO, and MOFA is the unsupervised side.
+:::
 
 ## MOFA &mdash; the factorisation
 
 :::: {.columns}
 
 ::: {.column width="63%"}
-![](figures/mofa_factorisation.png){height="470"}
+![](figures/mofa_factorisation.png){height="440"}
 :::
 
 ::: {.column width="37%"}
 $$Y^{(m)} \approx W^{(m)} \times Z$$
 
-One $W$ per view.
+Same shape as $y \approx X b$ &mdash; but now we know **neither** side.
 
-**One shared $Z$.**
+One $W$ per omic. **One shared $Z$.**
 
 That sharing *is* the integration.
-
-::: {.fragment}
-Hatched columns are **missing samples** &mdash; permitted, and exactly what the
-lab's data-overview plot shows you.
-:::
 :::
 
 ::::
@@ -234,161 +342,174 @@ Argelaguet *et al.*, "Multi-Omics Factor Analysis &mdash; a framework for
 :::
 
 ::: notes
-Essentially PCA for multi-omics data. The CLL data in lab 01 is the dataset
-from this paper - point at "unsupervised" in the citation line.
+Essentially PCA for multi-omics data. The CLL data in lab 01 is from this paper.
 
 Walk it left to right: one Y per assay, all sharing the sample axis. Each Y is
-approximated by a view-specific weight matrix W times ONE shared factor matrix Z.
-Z is shared across all views - that sharing IS the integration.
+approximated by an omic-specific weight matrix W times ONE shared factor matrix Z.
 
-Then advance the fragment for the missing-data point.
+Make the comparison to the linear-model slide explicit. There we had y and X
+given and solved for b. Here only Y is given: the model infers the weights AND
+the factors. That is why it is unsupervised - nobody supplied a target.
+
+Vocabulary: MOFA says "factor", DIABLO will say "component". Same idea, a
+direction in sample space built from weighted features.
+
+Hatched columns are missing samples.
 :::
 
-## MOFA: what the model does
+## MOFA &mdash; what the model does
 
 :::: {.columns}
 
-::: {.column width="55%"}
-**Inference** of hidden factors ($Z$) and loadings ($W$).
+::: {.column width="52%"}
+**Sparsity, from the same penalty idea as before**
 
-**Regularisation** induces sparsity two ways:
+- *per omic and factor* &mdash; ties each factor to the omics it is active in,
+  and prunes factors explaining too little
+- *per feature* &mdash; ties each factor to its few relevant features
 
-- *view- and factor-wise* &mdash; links factors to the views they are active in,
-  and prunes factors that explain too little
-- *feature-wise* &mdash; links factors to their most relevant features
+**One noise model per data type**
 
-**No guarantee of a global optimum.**
-
-- Run it multiple times, keep the high ELBO
-- Use `convergence_mode = "slow"`
+Gaussian for continuous, **Bernoulli for binary**, Poisson for counts &mdash;
+which is what lets methylation, expression, **mutations** and drug response go
+into one model together.
 :::
 
-::: {.column width="45%"}
-![](figures/local_vs_global_optima.png){height="420"}
+::: {.column width="48%"}
+```{r}
+#| label: local-optima
+#| fig-width: 5.5
+#| fig-height: 3.8
+fig_local_optima()
+```
+
+**No guarantee of the global optimum.** Set a seed; run it more than once and
+keep the best fit.
 :::
 
 ::::
 
 ::: notes
-Regularisation here is the LASSO idea from earlier: snap weights to zero.
+Left, top: this is the LASSO idea again, applied in two directions at once. They
+have seen weights snap to zero, so "sparse" is not a new word here.
 
-ELBO = Evidence Lower BOund, a lower bound on the log likelihood. Higher is
-better. This is why the lab sets a seed - without one you get a different local
-optimum each run and students would compare incomparable models.
+Left, bottom: in lab 01 you set
+model_opts$likelihoods[["Mutations"]] <- "bernoulli" by hand. This is why.
+Getting it wrong is a quiet source of bad models.
 
-The figure is the honest reason the seed matters.
+Right: this is the honest reason the labs set a seed. Without one you land in a
+different local optimum each run and students compare incomparable models.
+MOFA reports an ELBO - a lower bound on the log likelihood - and higher is
+better, so "run it a few times and keep the best ELBO" is the practical advice.
+Do not go further into the maths than that.
+
+The two previous MOFA slides merged into this one; if time is short, the noise
+model table is the part to skip.
+
+PAUSE FOR QUESTIONS (~min 72).
 :::
 
-## MOFA: one noise model per data type
-
-Implemented in a probabilistic **Bayesian** framework.
-
-| Data | Likelihood |
-|---|---|
-| Continuous | Gaussian |
-| Binary | Bernoulli |
-| Counts | Poisson |
-
-This is what lets a single model take methylation, expression, **mutations**
-and drug response together.
-
-::: notes
-The maths is daunting and we will not delve into it.
-
-What matters practically: in lab 01 you will set
-`model_opts$likelihoods[["Mutations"]] <- "bernoulli"` by hand. This slide is
-why. Getting that wrong is a common and quiet source of bad models.
-
-END OF MOFA BLOCK - pause for questions here (~min 68).
-:::
-
-## DIABLO
-
-![](figures/diablo_schematic.jpg){width="60%"}
-
-**PLS-DA for multiple input blocks.**
-
-- MOFA generalises PCA to multi-omics &rarr; unsupervised
-- DIABLO generalises PLS-DA to multi-omics &rarr; **supervised**
-
-Outcome variable $Y$: treatment group, sex, disease status, cancer subtype, &hellip;
-
-::: notes
-mixOmics: http://mixomics.org/mixdiablo/
-
-The symmetry with MOFA is the thing to land. Same data layout, opposite
-philosophy - and in lab 03 the students run both on the same TCGA data and
-compare.
-:::
-
-## DIABLO: objective and the design matrix
+## DIABLO &mdash; the supervised counterpart
 
 :::: {.columns}
 
 ::: {.column width="55%"}
-![](figures/diablo_objective.png){width="100%"}
+![](figures/diablo_schematic.jpg){width="100%"}
 
-Maximise the **sum of covariances** between all pairs of datasets.
+**PLS-DA for several blocks at once.**
+
+- MOFA generalises PCA &rarr; **unsupervised**
+- DIABLO generalises PLS-DA &rarr; **supervised**
 :::
 
 ::: {.column width="45%"}
-**Design matrix $C$** for $Q$ datasets
+Now there *is* a $Y$: treatment group, sex, disease status, cancer subtype.
 
-$Q \times Q$, values in $[0, 1]$ (default `"full"` &rarr; all 1)
+Maximise the **sum of covariances** between every pair of blocks &mdash; subject
+to a budget on how many features each block may use.
 
-Encodes *prior knowledge* about the datasets:
-
-- $< 0.5$ &rarr; focus on **discriminating the classes**
-- $> 0.5$ &rarr; focus on **correlating latent components**
+::: {.fragment}
+That budget is the `keepX` from the grid-search slide. In the lab it arrives
+pre-tuned; ask yourself who tuned it.
 :::
-
-::::
-
-. . .
-
-**Classification**: predict in each dataset separately, combine by majority vote
-&mdash; optionally weighted by each component's correlation with the outcome.
-
-::: notes
-The design matrix is the single most DIABLO-specific idea here, and the one
-students most often leave at the default without realising it is a modelling
-choice. Say that out loud.
-
-The lab uses the default. Ask them what they would change it to for the TCGA
-data and why.
-:::
-
-## Where this sits, and what we covered
-
-:::: {.columns}
-
-::: {.column width="45%"}
-**Other approaches**
-
-- iCluster
-- Group factor analysis
-- MINT (for P- and N- together)
-- &hellip; and plenty more
-
-The two we covered are representative of the unsupervised/supervised split,
-not exhaustive.
-:::
-
-::: {.column width="55%"}
-**We covered**
-
-- The principle of multi-omic integration
-- Supervised vs. unsupervised; regularisation
-- MOFA &mdash; concept and interpretation
-- DIABLO &mdash; concept and (s)PLS-DA
-- Next: both of them on real data
 :::
 
 ::::
 
 ::: notes
-Check the objectives off out loud against slide 2. If any of them did not land,
-this is the moment to find out rather than after the lab.
+The symmetry with MOFA is the thing to land: same data layout, opposite
+philosophy - and in lab 03a students run both on the same TCGA data and compare.
+
+"Component" here is MOFA's "factor". Say that once.
+
+The fragment closes the loop with the grid-search slide. The tutorial's keepX
+values were found by searching, not derived.
+:::
+
+## DIABLO &mdash; the design matrix
+
+:::: {.columns}
+
+::: {.column width="52%"}
+A $Q \times Q$ matrix for $Q$ omics, values in $[0, 1]$.
+Default is `"full"` &mdash; every entry 1.
+
+It encodes **prior knowledge** about how much you expect the omics to agree:
+
+- near **0** &rarr; concentrate on separating the classes
+- near **1** &rarr; concentrate on finding structure the omics share
+:::
+
+::: {.column width="48%"}
+**Prediction**
+
+Predict within each omic separately, then combine by majority vote &mdash;
+optionally weighted by how well each component tracks the outcome.
+:::
+
+::::
+
+::: {.fragment}
+The single most DIABLO-specific choice on offer, and the one most often left at
+its default without anyone noticing it *was* a choice.
+:::
+
+::: notes
+The lab uses the default. Ask the room what they would set it to for the TCGA
+data and why - there is no single right answer, which makes it a good question.
+:::
+
+## What we covered
+
+:::: {.columns}
+
+::: {.column width="52%"}
+- An omic is a **matrix**; many omics share a sample axis
+- Fitting means choosing **weights**; $y \approx X b$
+- **Regularisation** trades fit for simplicity and hands you sparsity
+- **Unsupervised** finds structure; **supervised** separates groups you named
+- **MOFA** = PCA for multi-omics; **DIABLO** = PLS-DA for multi-omics
+:::
+
+::: {.column width="48%"}
+**Plenty more out there**
+
+iCluster, group factor analysis, MINT, similarity network fusion, &hellip;
+
+Our two are representative of the supervised/unsupervised split, not a survey.
+
+**The honest caveat:** every method here is **linear**. That is a real
+limitation, and it is also why the output is interpretable at all.
+:::
+
+::::
+
+::: notes
+Check these against the objectives slide out loud. If something did not land,
+better to find out now than after the lab.
+
+The linearity caveat is worth 20 seconds - it is the most common question from
+anyone with an ML background.
 :::
 
 ## The lab
@@ -416,16 +537,15 @@ It must print `Environment looks good.`
 **03b** is where you stop following along:
 
 - characterise a factor against a covariate *your group* picks
-- then: drop a modality and ask whether the integration was worth it
+- then: drop an omic and ask whether the integration was worth it
 :::
 
 ::::
 
 ::: notes
-Point out explicitly that 03b has no single right answer and that different
-groups will get different results - that is the point, and we will compare at
-the end.
+Say explicitly that 03b has no single right answer and different groups will get
+different results - that is the point, and we compare at the end.
 
-Expect the mofapy2 version warning during run_mofa. Tell them now so nobody
+Warn them about the harmless mofapy2 version warning during run_mofa, so nobody
 loses ten minutes to it.
 :::

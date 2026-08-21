@@ -112,6 +112,13 @@ X is the data matrix from the previous slide, b holds one weight per feature.
 Point out that this is the SAME matrix picture, and that we will see it once
 more when MOFA shows up.
 
+Trace the shapes with a finger - the drawing is to scale, so this works:
+X is n rows by p columns, so y is as TALL as X (one entry per sample), and b is
+as tall as X is WIDE (one entry per feature).
+
+And note that b is taller than X: more weights to pin down than samples to do it
+with. That is the whole of the next slide, so plant it here.
+
 The word "weight" is the one to make stick - it comes back on every remaining
 slide.
 :::

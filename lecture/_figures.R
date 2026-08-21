@@ -62,26 +62,48 @@ fig_linear_model <- function() {
   dim_lab <- function(x, y, lab) annotate("text", x = x, y = y, label = lab,
                                           parse = TRUE, size = 3.9, colour = AXTX)
 
+  # Block geometry is driven by n and p so the drawing cannot contradict the
+  # dimension labels: y and X share the height n, and b's height equals X's
+  # width because b is p x 1. coord_fixed() is what makes that true on screen --
+  # with coord_cartesian the panel aspect stretches the rectangles and a square
+  # X can be drawn from unequal numbers.
+  n <- 2.0    # samples  -> height of y and X
+  p <- 3.0    # features -> width of X, and height of b
+  vw <- 0.5   # width of a single-column vector
+
+  x_y  <- 0.0                 # left edge of y
+  x_X  <- x_y + vw + 0.60     # left edge of X
+  x_b  <- x_X + p + 0.58      # left edge of b
+  midy <- n / 2
+  b_lo <- midy - p / 2        # b is taller than X here, because p > n
+
   p2 <- ggplot() +
-    rect(0.0, 0.0, 0.62, 3.0, "#dfeae8", "y") +
-    annotate("text", x = 0.95, y = 1.5, label = "phantom(0) %~~% phantom(0)",
+    rect(x_y, 0.0, vw, n, "#dfeae8", "y") +
+    annotate("text", x = x_y + vw + 0.30, y = midy,
+             label = "phantom(0) %~~% phantom(0)",
              parse = TRUE, size = 7, colour = DARK) +
-    rect(1.30, 0.0, 2.40, 3.0, "#eaf1f0", "X") +
-    annotate("text", x = 3.92, y = 1.5, label = "phantom(0) %*% phantom(0)",
+    rect(x_X, 0.0, p, n, "#eaf1f0", "X") +
+    annotate("text", x = x_X + p + 0.29, y = midy,
+             label = "phantom(0) %*% phantom(0)",
              parse = TRUE, size = 6, colour = DARK) +
-    rect(4.20, 1.05, 0.62, 0.9, "#f6ded4", "b") +
-    dim_lab(0.31, 3.28, "n %*% 1") +
-    dim_lab(2.50, 3.28, "n %*% p") +
-    dim_lab(4.51, 2.25, "p %*% 1") +
-    annotate("text", x = 4.51, y = 0.72, label = "one weight\nper feature",
-             size = 4.0, colour = ACC, fontface = "bold", lineheight = 0.95) +
-    coord_cartesian(xlim = c(-0.15, 5.4), ylim = c(-0.2, 3.7)) +
+    rect(x_b, b_lo, vw, p, "#f6ded4", "b") +
+    dim_lab(x_y + vw/2, n + 0.24, "n %*% 1") +
+    dim_lab(x_X + p/2,  n + 0.24, "n %*% p") +
+    dim_lab(x_b + vw/2, b_lo + p + 0.24, "p %*% 1") +
+    # b is the tallest thing on the panel (p > n), so the vertical limits key off
+    # b, not off X, or its top edge and dimension label get clipped. Keep the
+    # padding tight: coord_fixed letterboxes, so every spare unit of range
+    # shrinks the blocks. ("one weight per feature" used to be annotated below b;
+    # it is dropped because the slide's third bullet already says it, and the
+    # space it cost was making the whole schematic small.)
+    coord_fixed(ratio = 1, xlim = c(-0.2, x_b + vw + 0.40),
+                ylim = c(b_lo - 0.26, b_lo + p + 0.52), expand = FALSE) +
     labs(title = "Many features at once") +
     theme_void(base_size = 15) +
     theme(plot.title = element_text(face = "bold", colour = DARK, hjust = 0),
           plot.background = element_rect(fill = "transparent", colour = NA))
 
-  p1 | p2
+  p1 + p2 + plot_layout(widths = c(1, 1.12))
 }
 
 # --------------------------------------------------------------------------

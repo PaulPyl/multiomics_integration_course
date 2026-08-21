@@ -1,0 +1,112 @@
+/*-- scss:defaults --*/
+
+// NBIS-ish palette: the teal/green from the logo, warm accent for emphasis.
+$primary-teal:   #0d7a7a;
+$primary-dark:   #14332e;
+$accent:         #d1552b;
+$body-bg:        #ffffff;
+$body-color:     #1c2b28;
+$link-color:     $primary-teal;
+
+$font-family-sans-serif: "Lato", "Helvetica Neue", Helvetica, Arial, sans-serif;
+$presentation-font-size-root: 30px;
+$presentation-heading-font: $font-family-sans-serif;
+$presentation-heading-color: $primary-dark;
+$presentation-h1-font-size: 1.9em;
+$presentation-h2-font-size: 1.35em;
+$presentation-h3-font-size: 1.05em;
+$code-block-font-size: 0.62em;
+
+/*-- scss:rules --*/
+
+.reveal h2 {
+  border: none;
+  margin-bottom: 0.6em;
+}
+
+// Section dividers: full-bleed dark slide, title large and centred.
+// These are level-2 headings on purpose - a level-1 heading makes Quarto nest
+// every subsequent slide as a vertical child, which breaks arrow navigation.
+.reveal section.section-divider {
+  background-color: $primary-dark;
+
+  h2 {
+    color: #ffffff;
+    text-align: center;
+    font-size: 1.9em;
+    border: none;
+  }
+}
+// The logo is dark-on-transparent, so hide it where the background is dark.
+.reveal section.section-divider .slide-logo { display: none; }
+
+// Keep tables quiet and readable rather than gridded.
+.reveal table {
+  font-size: 0.85em;
+  border-collapse: collapse;
+  th {
+    color: $primary-dark;
+    border-bottom: 2px solid $primary-teal;
+  }
+  td { border: none; padding: 0.3em 0.7em; }
+  tbody tr:nth-child(odd) { background: rgba($primary-teal, 0.05); }
+}
+
+// Figure attributions and small print.
+.reveal .caption {
+  font-size: 0.6em;
+  color: #6b7a77;
+  text-align: center;
+  margin-top: -0.4em;
+}
+
+.reveal strong { color: $primary-dark; }
+
+.reveal .columns { align-items: center; }
+
+// Centre figures inside a column (fig-align only centres full-width figures).
+.reveal .column img { display: block; margin-left: auto; margin-right: auto; }
+
+// Inline code and code blocks: subtle, not boxed-in.
+.reveal code {
+  color: $accent;
+  background: rgba($accent, 0.07);
+  padding: 0.05em 0.25em;
+  border-radius: 3px;
+}
+.reveal pre code {
+  background: rgba($primary-teal, 0.06);
+  color: $body-color;
+  padding: 0.7em;
+  border-radius: 4px;
+}
+
+// Reveal gives <pre> a fixed width plus a small left offset, which pushes code
+// blocks past the edge of a narrow column. Let them size to their container.
+.reveal pre {
+  width: auto;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+// Highlight fragment used on the MOFA paper slide.
+.reveal .highlight-red {
+  color: $accent;
+  font-weight: 600;
+  text-align: center;
+}
+
+.reveal .callout-note {
+  font-size: 0.82em;
+}
+
+// Footer and logo should not compete with content.
+.reveal .footer {
+  font-size: 0.5em;
+  color: #8a9895;
+}
+.reveal .slide-logo {
+  max-height: 42px !important;
+}

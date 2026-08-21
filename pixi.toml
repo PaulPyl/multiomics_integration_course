@@ -14,9 +14,17 @@ platforms = ["osx-arm64", "osx-64", "linux-64"]
 # project-local library (see .Rprofile).
 setup = "Rscript setup/install_r_extras.R"
 # Render every lab to HTML (instructor versions included).
-render = "Rscript -e 'for (f in list.files(\"labs\", pattern = \"[.]Rmd$\", full.names = TRUE)) rmarkdown::render(f)'"
+render-labs = "Rscript -e 'for (f in list.files(\"labs\", pattern = \"[.]Rmd$\", full.names = TRUE)) rmarkdown::render(f)'"
+# Render the lecture deck to self-contained HTML.
+slides = "quarto render lecture/slides.qmd"
 check = "Rscript setup/check_env.R"
 rstudio = "open -n -a RStudio ."
+
+[activation.env]
+# Directory-independent, so R finds these no matter which subdirectory it is
+# started from (knitting from labs/ sets the cwd to labs/).
+R_LIBS_USER       = "$PIXI_PROJECT_ROOT/.Rlibrary"
+RETICULATE_PYTHON = "$PIXI_PROJECT_ROOT/.pixi/envs/default/bin/python"
 
 [dependencies]
 # --- core ---
@@ -25,6 +33,7 @@ r-tidyverse = "*"
 "r-data.table" = "*"
 r-ggplot2 = "*"
 r-rmarkdown = "*"
+quarto = "*"
 r-knitr = "*"
 r-here = "*"
 
@@ -33,6 +42,7 @@ r-randomforest = "*"
 r-survival = "*"
 r-survminer = "*"
 r-pheatmap = "*"
+r-magick = "*"   # knitr/BiocStyle figure cropping
 r-psych = "*"
 r-reticulate = "*"
 r-biocmanager = "*"

@@ -39,10 +39,30 @@ pixi run rstudio
 |---|---|
 | `01_CLL_MOFA.Rmd` | MOFA2 walkthrough on the CLL cohort (4 omics, N=200) |
 | `02_CLL_DIABLO.Rmd` | The same cohort with mixOmics `block.(s)plsda` |
-| `03_TCGA_MOFA_vs_DIABLO.Rmd` | Group report: MOFA vs DIABLO on TCGA-BRCA |
+| `03a_TCGA_MOFA_vs_DIABLO.Rmd` | MOFA vs DIABLO on TCGA-BRCA — run and interpret |
+| `03b_TCGA_your_code.Rmd` | **Students write the code themselves** |
 
-Lab 3 is the assessed group exercise. Students run the code, write their own
-interpretation under each result, and hand in the rendered HTML.
+`03a` is the run-and-comment report: students execute the document, write their
+own interpretation under each result, and hand in the rendered HTML.
+
+`03b` is new for 2026 and is where they stop following along. Two open-ended
+tasks — characterise a factor against a clinical covariate their group picks,
+then drop a modality and ask whether integrating three omics was worth it.
+`*.instructor.Rmd` and `*.solutions.Rmd` are the instructor copies; **do not
+distribute them**.
+
+## Lecture
+
+```bash
+pixi run slides
+```
+
+Renders `lecture/slides.qmd` to a single self-contained `lecture/slides.html`
+(reveal.js). Open it directly in a browser — no server needed. Speaker notes are
+in `::: notes` blocks; press `s` in the browser for the speaker view.
+
+16 slides for a 90-minute session, with three scheduled question pauses marked
+in the notes.
 
 ### Windows
 

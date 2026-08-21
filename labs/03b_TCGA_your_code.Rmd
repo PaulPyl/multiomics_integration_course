@@ -1,0 +1,348 @@
+---
+title: "TCGA-BRCA — write your own code"
+subtitle: "KIMN20 2026 — Lab 03b"
+author: "Your names here"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc_float: true
+    toc_depth: 3
+    df_print: paged
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# What this document is
+
+In labs 01, 02 and 03a you ran code that was written for you and interpreted the
+output. **Here you write the code.**
+
+There are two tasks. Both are open-ended: there is no single correct answer, and
+different groups will get genuinely different results. That is the point — we
+will compare across groups at the end of the session.
+
+Fill in the chunks marked `# TODO`. Keep your interpretation in the prose
+sections; a plot with no accompanying sentence gets no credit. Hand in the
+rendered HTML.
+
+**A null result is a pass.** Several of the covariates below have no detectable
+association with anything. If that is what you find, say so and show the
+evidence. Do not go shopping for a significant covariate.
+
+**Your group:**
+
+- ...
+- ...
+
+## Setup
+
+This is given to you — run it and move on.
+
+```{r libraries}
+library(MOFA2)
+library(mixOmics)
+library(tidyverse)
+```
+
+```{r data}
+data(breast.TCGA)
+
+X <- list(
+  mirna   = breast.TCGA$data.train$mirna,
+  mrna    = breast.TCGA$data.train$mrna,
+  protein = breast.TCGA$data.train$protein
+)
+subtype <- breast.TCGA$data.train$subtype
+
+# Clinical annotation, joined on the short TCGA sample barcode.
+# NOTE: TCGA writes missing values as the literal string '-- , so we declare it
+# as NA on read. Leave that out and you get a spurious extra category.
+clinical <- read_tsv("../data/TCGA-BRCA.Clinical.tsv",
+                     na = c("", "NA", "'--"),
+                     name_repair = "unique_quiet",
+                     col_types = cols(age_at_index = "i", .default = "c")) |>
+  select(case_submitter_id, age_at_index, ethnicity, vital_status,
+         ajcc_pathologic_stage, primary_diagnosis) |>
+  mutate(
+    SampleID = gsub("TCGA-([A-Z0-9]+)-(.*)", "\\2", case_submitter_id),
+    # ajcc_pathologic_stage has 9 levels, several with <5 samples. This coarser
+    # version is often the more useful one -- your choice which you use.
+    stage_coarse = str_extract(ajcc_pathologic_stage, "Stage (I{1,3}V?|IV|X)")
+  ) |>
+  distinct_all()
+
+candidate_covariates <- c("age_at_index", "ethnicity", "vital_status",
+                          "stage_coarse", "primary_diagnosis")
+
+lapply(X, dim)
+```
+
+How many samples you actually have per group matters for every test you are
+about to run. **Check before you choose**, and come back to this table when you
+interpret a result:
+
+```{r covariate-counts}
+tibble(sample = rownames(X$mrna)) |>
+  left_join(clinical, by = join_by(sample == SampleID)) |>
+  select(all_of(candidate_covariates)) |>
+  map(~ table(.x, useNA = "ifany"))
+```
+
+A small helper so you are not writing boilerplate every time you want a model.
+`views` lets you fit on a subset of the omics — you will need that in task 2.
+
+```{r fit-helper}
+fit_mofa <- function(views = names(X), num_factors = 10, seed = 42) {
+  obj <- create_mofa(lapply(X[views], t))
+
+  data_opts  <- get_default_data_options(obj)
+  data_opts$scale_views <- TRUE
+
+  model_opts <- get_default_model_options(obj)
+  model_opts$num_factors <- num_factors
+
+  train_opts <- get_default_training_options(obj)
+  train_opts$convergence_mode <- "fast"   # "slow" for a final model
+  train_opts$seed    <- seed
+  train_opts$verbose <- FALSE
+
+  obj <- prepare_mofa(obj,
+    data_options     = data_opts,
+    model_options    = model_opts,
+    training_options = train_opts
+  )
+  obj <- run_mofa(obj, outfile = tempfile(fileext = ".hdf5"),
+                  use_basilisk = FALSE)
+
+  # Attach subtype and the clinical columns to the model's sample metadata.
+  samples_metadata(obj) <- samples_metadata(obj) |>
+    mutate(Subtype = subtype) |>
+    left_join(clinical, by = join_by(sample == SampleID))
+
+  obj
+}
+```
+
+```{r fit-full}
+mofa_full <- fit_mofa()
+mofa_full
+```
+
+---
+
+# Task 1 — Characterise a factor against a covariate of your choice
+
+Every group takes a **different** covariate:
+
+| Covariate | Type |
+|---|---|
+| `age_at_index` | continuous |
+| `ethnicity` | categorical |
+| `vital_status` | categorical |
+| `stage_coarse` (or `ajcc_pathologic_stage`) | categorical |
+| `primary_diagnosis` | categorical |
+
+Do **not** use `Subtype` — lab 03a already did, and it dominates everything.
+
+**Our group's covariate:** `...`
+
+## 1a. Which factors relate to your covariate?
+
+Run the association test across **all** the candidate covariates at once, then
+find yours in the result.
+
+> Two things you need to know, because they will bite you otherwise:
+>
+> 1. `correlate_factors_with_covariates()` clusters the rows of its heatmap, so
+>    it **errors if you pass only one covariate**. Pass the whole set
+>    (`candidate_covariates` is already defined for you).
+> 2. It warns that it is *converting non-numeric values to numeric*. For a
+>    categorical covariate with more than two unordered levels that is
+>    statistically wrong — it treats your categories as though they sat on a
+>    numeric scale. We deal with that in 1b.
+
+```{r task1a}
+# TODO: correlate the factors with all of the candidate covariates.
+# Expected output: a heatmap, factors on one axis, covariates on the other.
+```
+
+**Where does your covariate sit relative to the others?** If it shows nothing,
+that is your result — report it.
+
+*Your answer:*
+
+## 1b. Test your covariate properly
+
+Because of the numeric coercion above, write your own test of your covariate
+against each factor.
+
+> Hint: `get_factors(mofa_full)[[1]]` gives you the samples × factors matrix.
+> For a **categorical** covariate use `kruskal.test(values ~ groups)`; for a
+> **continuous** one use `cor.test(..., method = "spearman")`.
+> `apply(Z, 2, ...)` runs your test down every factor. Watch out for `NA`s.
+
+```{r task1b}
+# TODO: compute a p-value per factor for your covariate, and report the
+# strongest.
+# Expected output: a named vector of p-values, and the name of the top factor.
+```
+
+**Does your own test agree with the heatmap in 1a?** If it disagrees, which do
+you trust, and why?
+
+You just ran one test per factor. **Does your best p-value survive a Bonferroni
+correction** for that many tests?
+
+*Your answer:*
+
+## 1c. Show the factor values against your covariate
+
+```{r task1c}
+# TODO: plot your top factor's values against your covariate.
+# Hint: plot_factor(), with dodge = TRUE and add_violin = TRUE for categoricals.
+# Expected output: one panel, samples spread along the factor axis,
+# visually separated by your covariate.
+```
+
+**Does the picture match the p-value?** A significant association can still look
+completely unconvincing, and an eye-catching plot can rest on a handful of
+samples. Check your group sizes from the setup chunk before committing to a
+claim.
+
+*Your answer:*
+
+## 1d. What drives that factor?
+
+For your top factor, pull the strongest-weighted features in **each** of the
+three views.
+
+> Hint: `plot_top_weights()` takes `view =`, `factor =` and `nfeatures =`.
+> `get_weights(..., as.data.frame = TRUE)` gives you the numbers if you would
+> rather sort them yourself.
+
+```{r task1d}
+# TODO: for each of "mirna", "mrna", "protein", show the top ~10 weights
+# for your factor.
+# Expected output: three plots (or one table of 30 rows).
+```
+
+**Is your factor active in all three views, or is it essentially a one-omic
+factor?** Do not guess from the weights — check the variance decomposition:
+
+```{r task1d-variance}
+# TODO: show how much variance your factor explains in each view.
+# Hint: plot_variance_explained() for the overview, or
+# get_variance_explained(mofa_full)$r2_per_factor[[1]] for the numbers.
+```
+
+*Your answer:*
+
+## 1e. Look two or three features up
+
+Take two or three of the top features from 1d and find out what they are. The
+gene/protein names in this dataset are already human-readable.
+
+**Do any of them have a documented connection to breast cancer, or to your
+covariate specifically?** Cite what you find. "We looked and found nothing
+convincing" is a perfectly good answer — report that rather than inventing a
+story.
+
+*Your answer:*
+
+---
+
+# Task 2 — Was the integration actually worth it?
+
+You just fitted a model on three omics. This task asks whether you needed all
+three.
+
+## 2a. Fit the reduced models
+
+Fit a model on each **pair** of views, and on each **single** view, keeping
+everything else identical. The `fit_mofa()` helper takes a `views` argument.
+
+> Keep `seed = 42` and `num_factors = 10` fixed across every model, or you are
+> not comparing like with like. Seven models take a couple of minutes.
+
+```{r task2a}
+# TODO: fit models leaving out one view at a time, and on single views.
+# Expected output: a named list of fitted MOFA objects, e.g.
+#   models$full, models$no_protein, models$mrna_only, ...
+```
+
+## 2b. Compare how much signal each model captures
+
+For each model, extract the total variance explained per view and put it in one
+comparable table or plot.
+
+> Hint: `get_variance_explained(model)$r2_total[[1]]` returns a named numeric
+> vector. `imap_dfr()` or a `for` loop over your list both work fine.
+
+```{r task2b}
+# TODO: build one table/plot comparing the models.
+# Expected output: rows = model, columns = view (or a long-format tibble
+# with model / view / r2 columns).
+```
+
+**Does a view explain more of itself when the other views are absent?** Predict
+the answer before you look, then explain what you actually see.
+
+*Your answer:*
+
+## 2c. Compare how well each model separates the subtypes
+
+This is the part that actually answers "was it worth it". For each model, show
+whether the factors still separate the three subtypes (Basal, Her2, LumA).
+
+Pick your own approach. Two reasonable ones:
+
+- **Visual:** `plot_factors()` on the top two factors, coloured by `Subtype`,
+  for each model side by side.
+- **Quantitative:** for each model, test each factor against `Subtype` with
+  `kruskal.test` and keep the best p-value — or fit a classifier on the factors
+  and report cross-validated accuracy.
+
+The quantitative route makes for a much stronger answer.
+
+```{r task2c}
+# TODO: compare subtype separation across your models.
+```
+
+*Your answer:*
+
+## 2d. Conclude
+
+Answer these three explicitly:
+
+1. **Which single omic carries most of the subtype signal?**
+2. **Is any view redundant** — can you drop it and lose essentially nothing?
+3. **Did integrating three omics beat the best single omic?** If so, by how
+   much? If not, why do you think people still do multi-omics integration?
+
+*Your answer:*
+
+---
+
+# If you have time
+
+Nothing below is required.
+
+- Repeat task 2 with **DIABLO** instead of MOFA (`block.splsda` takes a subset
+  of blocks the same way). Does the supervised method reach the same conclusion
+  about which omic matters?
+- In 2a you held `num_factors = 10` fixed. Does your conclusion change at 3
+  factors, or at 20?
+- Refit your best model with `convergence_mode = "slow"` and a couple of
+  different seeds. How stable is the answer you gave in 2d?
+
+<details>
+<summary>**Session Info**</summary>
+
+```{r session-info}
+sessionInfo()
+```
+
+</details>

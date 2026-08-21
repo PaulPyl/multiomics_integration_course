@@ -34,7 +34,6 @@ library(data.table)
 library(ggplot2)
 library(tidyverse)
 library(utils)
-library(MASS)
 ```
 
 Data is stored as a list of matrices. Features are stored in the rows and samples in the columns
@@ -56,7 +55,10 @@ Sample metadata are stored as a data.frame. Important columns are:
 The full meta data can be obtained from the Bioconductor package `BloodCancerMultiOmics2017` as `data("patmeta")`.
 
 ```{r}
-CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
+# Read from the copy vendored in this repo. The upstream location is
+# ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt ,
+# but FTP is blocked on many university networks and fread() fails opaquely.
+CLL_metadata <- fread("../data/CLL_sample_metadata.txt")
 ```
 
 # Create the MOFA obejct and train the model
@@ -152,12 +154,21 @@ Train the model: this should take \~2min
 
 usePrecomputed <- TRUE #Change this if you want to run the computation yourself ... it will take some time
 
+# The precomputed model is cached under ../data/ on first use, so the download
+# happens at most once per checkout rather than every time you knit.
+precomputedPath <- "../data/MOFA2_CLL.rds"
+
 if(!usePrecomputed){
-  MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_CLL.hdf5", use_basilisk = TRUE)
+  MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_CLL.hdf5", use_basilisk = FALSE)
   saveRDS(MOFAobject,"MOFA2_CLL.rds")
 }else{
-  # Load precomputed model
-  MOFAobject <- readRDS(url("http://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/MOFA2_CLL.rds"))
+  if(!file.exists(precomputedPath)){
+    download.file(
+      "https://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/MOFA2_CLL.rds",
+      destfile = precomputedPath, mode = "wb"
+    )
+  }
+  MOFAobject <- readRDS(precomputedPath)
 }
 ```
 

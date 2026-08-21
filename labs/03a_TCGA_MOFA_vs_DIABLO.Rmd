@@ -118,7 +118,7 @@ MOFAobject <- prepare_mofa(MOFAobject,
 ```
 
 ```{r}
-MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_breast.TCGA.hdf5", use_basilisk = TRUE)
+MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_breast.TCGA.hdf5", use_basilisk = FALSE)
 ```
 
 ```{r}

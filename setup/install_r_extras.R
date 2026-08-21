@@ -2,8 +2,10 @@
 # Packages the labs need that are not available on conda-forge/bioconda.
 # Run once per checkout with: pixi run setup
 
-lib <- file.path(getwd(), ".Rlibrary")
+lib <- Sys.getenv("R_LIBS_USER", unset = "")
+if (!nzchar(lib)) stop("R_LIBS_USER is not set - run this through `pixi run setup`.")
 dir.create(lib, showWarnings = FALSE, recursive = TRUE)
+.libPaths(c(lib, .libPaths()))
 
 needed <- c(
   # Not published on bioconda at all (as of 2026-08).

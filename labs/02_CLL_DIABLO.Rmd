@@ -26,7 +26,6 @@ library(data.table)
 library(ggplot2)
 library(tidyverse)
 library(utils)
-library(MASS)
 ```
 
 Data is stored as a list of matrices. Features are stored in the rows and samples in the columns
@@ -46,7 +45,10 @@ Sample metadata are stored as a data.frame. Important columns are:
 
 The full meta data can be obtained from the Bioconductor package `BloodCancerMultiOmics2017` as `data("patmeta")`.
 ```{r}
-CLL_metadata <- fread("ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt")
+# Read from the copy vendored in this repo. The upstream location is
+# ftp://ftp.ebi.ac.uk/pub/databases/mofa/cll_vignette/sample_metadata.txt ,
+# but FTP is blocked on many university networks and fread() fails opaquely.
+CLL_metadata <- fread("../data/CLL_sample_metadata.txt")
 ```
 
 # Block PLSA-Da
@@ -88,7 +90,7 @@ toKeep <- lapply(theX, function(x) rep(nFeatures, nComp))
 print(toKeep)
 ```
 
-We will tell DIABLO to keep 10 features in each of the three components, this is a bit arbitrary and we should investigate the results carefully to adapt these numbers to our desired output, i.e. some components should probably retain more or less features in some of the omics we put in. We will use this general limit of 610 for all omics and components for now.
+We will tell DIABLO to keep 10 features in each of the three components, this is a bit arbitrary and we should investigate the results carefully to adapt these numbers to our desired output, i.e. some components should probably retain more or less features in some of the omics we put in. We will use this general limit of 10 for all omics and components for now.
 
 ```{r}
 result.diablo.cll <- block.splsda(X = theX, Y = theY$IGHV_Group, ncomp = nComp, keepX = toKeep) # run the method
@@ -123,11 +125,27 @@ mRNA_loadings |> dplyr::filter(lowestRank <= 3) |> arrange(lowestRank)
 ```
 
 ```{r}
-#BiocManager::install(c("ensembldb", "AnnotationHub"))
 library(AnnotationHub)
 ah <- AnnotationHub()
-ahDb <- query(ah, pattern = c("Homo Sapiens", "EnsDb"))
-ensDb <- ah[["AH116860"]]
+ahDb <- query(ah, pattern = c("Homo sapiens", "EnsDb"))
+
+# Select the annotation by Ensembl RELEASE rather than by AnnotationHub ID.
+# Hardcoding an ID (this lab used to pin "AH116860") is fragile: the IDs are
+# snapshot-specific and quietly stop resolving as the hub moves on. Pinning the
+# release keeps everyone on the same gene names, and if that release is ever
+# withdrawn we fall back to the newest available and say so.
+ensemblRelease <- 113
+wanted <- paste("Ensembl", ensemblRelease, "EnsDb for Homo sapiens")
+
+ensDbId <- names(ahDb)[match(wanted, ahDb$title)]
+if (is.na(ensDbId)) {
+  ensDbId <- tail(names(ahDb), 1)
+  warning("Ensembl ", ensemblRelease, " not in the hub; falling back to ",
+          ahDb$title[match(ensDbId, names(ahDb))])
+}
+message("Using ", ahDb$title[match(ensDbId, names(ahDb))], " (", ensDbId, ")")
+
+ensDb <- ah[[ensDbId]]
 GeneNames <- mapIds(ensDb, mRNA_loadings$EnsemblGeneID, keytype = "GENEID", column = "GENENAME")
 mRNA_loadings |> mutate(GeneName = GeneNames[EnsemblGeneID]) |> relocate(GeneName) |> dplyr::filter(lowestRank <= 3) |> arrange(lowestRank)
 ```

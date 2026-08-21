@@ -58,10 +58,8 @@ An **abstraction**: data about a set of samples.
 - Some missingness is permissible
 
 ::: {.fragment}
-Just a **stack of matrices** sharing their sample axis.
-
-**Thousands of features, tens to hundreds of samples.** Hold onto that &mdash;
-it is the whole reason for the next three slides.
+- Just a **stack of matrices** sharing their sample axis
+- **Thousands of features, tens to hundreds of samples**
 :::
 :::
 
@@ -97,9 +95,9 @@ PAUSE FOR QUESTIONS (~min 15).
 fig_linear_model()
 ```
 
-The orange gaps are the **residuals** &mdash; what the model got wrong. Fitting
-means choosing the weights $b$ so that $Xb$ lands as close to $y$ as possible.
-A **weight** says how much one feature contributes.
+- Orange gaps = the **residuals**, what the model got wrong
+- **Fitting** = choose the weights $b$ so that $Xb$ lands close to $y$
+- A **weight** = how much one feature contributes
 
 ::: notes
 This is the foundation slide. Do not rush it, and do not assume the room has
@@ -120,17 +118,17 @@ slide.
 
 ## Too many features
 
-With **thousands of features and few samples**, plain least squares fails: there
-are more knobs than data to pin them down. It fits noise perfectly and
-generalises badly.
+- Thousands of features, few samples &rarr; **more knobs than data**
+- Plain least squares fits the noise perfectly, and generalises badly
 
 ::: {.fragment}
-**Fix: add a penalty on the weights.** LASSO minimises
+**Fix: penalise the weights.** LASSO minimises
 
 $$\underbrace{\tfrac{1}{N}\lVert y - Xb \rVert_2^2}_{\text{fit the data}} \;+\; \underbrace{\lambda \lVert b \rVert_1}_{\text{keep weights small}}$$
 
-$\lambda$ sets the exchange rate between the two. Turn it up and weights go to
-**exactly zero** &mdash; the model selects features for you.
+- $\lambda$ sets the exchange rate between the two terms
+- Turn it up and weights go to **exactly zero**
+- The model **selects features** for you
 :::
 
 ::: notes
@@ -153,12 +151,17 @@ That is also what "sparse" means when MOFA and DIABLO say it later.
 fig_lasso_paths()
 ```
 
-**Orange** = the 5 features that really matter, **grey** = the other 35. As
-$\lambda$ grows (rightwards) the noise weights hit **exactly zero** first.
-Feature selection falls out of the fit.
+- As $\lambda$ grows (rightwards), noise weights hit **exactly zero** first
+- Feature selection falls out of the fit
+
+::: {.caption}
+Toy example: 60 simulated samples, 40 features &mdash; **orange** = the 5 that
+carry real signal, **grey** = the other 35, pure noise.
+:::
 
 ::: notes
-Simulated: 60 samples, 40 features, only 5 of which do anything.
+The toy setup is on the slide now, so no need to recite it: 60 samples, 40
+features, 5 real.
 
 Left: each line is one feature's weight as lambda grows. At the left edge
 everything is non-zero - the model has happily used all 40, including the 35
@@ -180,8 +183,9 @@ Ask: which lambda would you pick? Let them answer, then the next slide.
 fig_choosing_lambda()
 ```
 
-Fit on part of the data, score on the part you held back, repeat over a grid.
-With two knobs, search the grid &mdash; **circle = best combination**.
+- Fit on part of the data, score on what you held back, repeat over a grid
+- Two knobs &rarr; search the grid; **circle = best combination**
+- In **DIABLO** this is `keepX` &mdash; features kept per omic. Back to it later.
 
 ::: notes
 Left: hold out part of the data, fit on the rest, measure error on what was held
@@ -189,9 +193,10 @@ out, repeat across a grid of lambda. Too little penalty overfits, too much
 underfits, and the minimum is the compromise. Note the curve is flat near the
 bottom - the choice is not knife-edge.
 
-Right: with two parameters you search a grid. This is exactly what happens in
-the lab when DIABLO wants a number of features per omic - and it is why those
-keepX numbers in the tutorial look arbitrary. Somebody searched.
+Right: with two parameters you search a grid. Name keepX out loud here - the
+slide does - so that when DIABLO turns up it is already a familiar word rather
+than a new one. It is also why the tutorial's keepX numbers look arbitrary:
+somebody searched.
 
 In lab 03b they choose a parameter themselves rather than accepting one.
 
@@ -205,10 +210,8 @@ END OF THE FITTING STORY. The next two slides change subject.
 ::: {.column width="50%"}
 ### Unsupervised
 
-We hand over **only the data**.
-
-"What structure is in here?"
-
+- We hand over **only the data**
+- *"What structure is in here?"*
 - Clustering: hierarchical
 - Embedding: **PCA**
 :::
@@ -216,10 +219,8 @@ We hand over **only the data**.
 ::: {.column width="50%"}
 ### Supervised
 
-We also hand over **the answer** &mdash; group labels, a response.
-
-"What separates *these* groups?"
-
+- We also hand over **the answer** &mdash; labels, a response
+- *"What separates these groups?"*
 - Clustering: k-means
 - Embedding: **PLS-DA**
 :::
@@ -227,9 +228,9 @@ We also hand over **the answer** &mdash; group labels, a response.
 ::::
 
 ::: {.fragment}
-**PCA** finds directions of maximum variance in $X$. **PLS-DA** finds directions
-that maximise covariance *with the labels* $y$ &mdash; same linear-combination
-machinery, different target.
+- **PCA** &rarr; directions of maximum variance in $X$
+- **PLS-DA** &rarr; directions of maximum covariance with the labels $y$
+- Same weighted-combination machinery, different target
 :::
 
 ::: notes
@@ -295,13 +296,11 @@ Illustration from mixomics.org
 :::
 
 ::: {.column width="38%"}
-**N-integration** &mdash; several omics, **the same samples**. This is us, and
-the rest of the lecture.
-
-*P-integration* is the other axis: the same omic across several studies.
-
-Note the first split in each tree: **classification or not** &mdash; supervised
-or unsupervised, again.
+- **N-integration** &mdash; several omics, **the same samples**
+- That is us, and the rest of the lecture
+- *P-integration* &mdash; the same omic across several studies
+- First split in every tree: **classification or not**
+- &hellip; i.e. supervised or unsupervised, again
 :::
 
 ::::
@@ -327,11 +326,9 @@ is DIABLO, and MOFA is the unsupervised side.
 ::: {.column width="37%"}
 $$Y^{(m)} \approx W^{(m)} \times Z$$
 
-Same shape as $y \approx X b$ &mdash; but now we know **neither** side.
-
-One $W$ per omic. **One shared $Z$.**
-
-That sharing *is* the integration.
+- Same shape as $y \approx Xb$ &mdash; but now **neither** side is known
+- One $W$ per omic, **one shared $Z$**
+- That sharing *is* the integration
 :::
 
 ::::
@@ -364,15 +361,16 @@ Hatched columns are missing samples.
 ::: {.column width="52%"}
 **Sparsity, from the same penalty idea as before**
 
-- *per omic and factor* &mdash; ties each factor to the omics it is active in,
-  and prunes factors explaining too little
-- *per feature* &mdash; ties each factor to its few relevant features
+- *per omic and factor* &mdash; which omics a factor is active in; prunes
+  factors that explain too little
+- *per feature* &mdash; which few features a factor uses
 
 **One noise model per data type**
 
-Gaussian for continuous, **Bernoulli for binary**, Poisson for counts &mdash;
-which is what lets methylation, expression, **mutations** and drug response go
-into one model together.
+- Gaussian &rarr; continuous
+- **Bernoulli &rarr; binary**, e.g. mutations
+- Poisson &rarr; counts
+- &rarr; mutations and expression in **one** model
 :::
 
 ::: {.column width="48%"}
@@ -383,8 +381,8 @@ into one model together.
 fig_local_optima()
 ```
 
-**No guarantee of the global optimum.** Set a seed; run it more than once and
-keep the best fit.
+- **No guarantee of the global optimum**
+- Set a seed; run it more than once and keep the best fit
 :::
 
 ::::
@@ -423,14 +421,13 @@ PAUSE FOR QUESTIONS (~min 72).
 :::
 
 ::: {.column width="45%"}
-Now there *is* a $Y$: treatment group, sex, disease status, cancer subtype.
-
-Maximise the **sum of covariances** between every pair of blocks &mdash; subject
-to a budget on how many features each block may use.
+- Now there *is* a $Y$: treatment group, sex, disease status, subtype
+- Maximise the **sum of covariances** between every pair of blocks
+- Subject to a **budget** on how many features each block may use
 
 ::: {.fragment}
-That budget is the `keepX` from the grid-search slide. In the lab it arrives
-pre-tuned; ask yourself who tuned it.
+- That budget is the `keepX` from the grid-search slide
+- In the lab it arrives pre-tuned &mdash; ask yourself who tuned it
 :::
 :::
 
@@ -442,8 +439,8 @@ philosophy - and in lab 03a students run both on the same TCGA data and compare.
 
 "Component" here is MOFA's "factor". Say that once.
 
-The fragment closes the loop with the grid-search slide. The tutorial's keepX
-values were found by searching, not derived.
+The fragment closes the loop with the grid-search slide, where keepX was already
+named. The tutorial's values were found by searching, not derived.
 :::
 
 ## DIABLO &mdash; the design matrix
@@ -451,27 +448,27 @@ values were found by searching, not derived.
 :::: {.columns}
 
 ::: {.column width="52%"}
-A $Q \times Q$ matrix for $Q$ omics, values in $[0, 1]$.
-Default is `"full"` &mdash; every entry 1.
-
-It encodes **prior knowledge** about how much you expect the omics to agree:
-
+- A $Q \times Q$ matrix for $Q$ omics, values in $[0, 1]$
+- Default `"full"` &mdash; every entry 1
+- Encodes **prior knowledge** about how far the omics should agree
 - near **0** &rarr; concentrate on separating the classes
-- near **1** &rarr; concentrate on finding structure the omics share
+- near **1** &rarr; concentrate on structure the omics share
 :::
 
 ::: {.column width="48%"}
 **Prediction**
 
-Predict within each omic separately, then combine by majority vote &mdash;
-optionally weighted by how well each component tracks the outcome.
+- Predict within each omic separately
+- Combine by **majority vote**
+- Optionally weighted by how well each component tracks the outcome
 :::
 
 ::::
 
 ::: {.fragment}
-The single most DIABLO-specific choice on offer, and the one most often left at
-its default without anyone noticing it *was* a choice.
+- The most DIABLO-specific choice on offer
+- Also the one most often left at its default &mdash; without anyone noticing it
+  *was* a choice
 :::
 
 ::: notes
@@ -494,12 +491,13 @@ data and why - there is no single right answer, which makes it a good question.
 ::: {.column width="48%"}
 **Plenty more out there**
 
-iCluster, group factor analysis, MINT, similarity network fusion, &hellip;
+- iCluster, group factor analysis, MINT, similarity network fusion, &hellip;
+- Our two show the supervised/unsupervised split, not a survey
 
-Our two are representative of the supervised/unsupervised split, not a survey.
+**The honest caveat**
 
-**The honest caveat:** every method here is **linear**. That is a real
-limitation, and it is also why the output is interpretable at all.
+- Every method here is **linear**
+- A real limitation &mdash; and why the output is interpretable at all
 :::
 
 ::::
@@ -532,7 +530,7 @@ Before you start:
 pixi run check
 ```
 
-It must print `Environment looks good.`
+- Must print `Environment looks good.`
 
 **03b** is where you stop following along:
 

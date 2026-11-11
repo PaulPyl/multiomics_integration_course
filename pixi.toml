@@ -13,7 +13,7 @@ platforms = ["osx-arm64", "osx-64", "linux-64"]
 # MOFA2 is not published on bioconda, so it comes from Bioconductor into a
 # project-local library (see .Rprofile).
 setup = "Rscript setup/install_r_extras.R"
-# Render every lab to HTML (instructor versions included).
+# Render every lab in labs/ to HTML.
 render-labs = "Rscript -e 'for (f in list.files(\"labs\", pattern = \"[.]Rmd$\", full.names = TRUE)) rmarkdown::render(f)'"
 # Render the lecture deck to self-contained HTML.
 slides = "quarto render lecture/slides.qmd"

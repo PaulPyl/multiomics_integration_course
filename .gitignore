@@ -8,12 +8,17 @@
 .RData
 .Rproj.user/
 
+# Instructor-only material is a separate, private repository cloned into this
+# folder. It must never be committed here: this repository is public, and
+# deleting a file from a public repository does not remove it from its history.
+instructor/
+
 # rendered output
 labs/*.html
 labs/*_files/
 labs/*_cache/
 lecture/*.html
-assessment/*.html
+lecture/Rplots.pdf
 
 # large / regenerable model artifacts
 *.hdf5

@@ -10,12 +10,19 @@ Instructor: Paul-Theodor Pyl (NBIS / SciLifeLab)
 | Path | Contents |
 |---|---|
 | `lecture/` | Slide source and the small live-demo scripts used in the lecture |
-| `labs/` | Student-facing labs (`*.Rmd`) and instructor versions (`*.instructor.Rmd`) |
+| `labs/` | The labs, as R Markdown documents |
 | `data/` | Small vendored inputs — sample metadata, TCGA clinical table |
-| `assessment/` | Exam questions and the script that regenerates their figures |
 | `setup/` | Environment install and smoke-test scripts |
 
-## Getting started (students)
+## Getting started
+
+### On the course RStudio Server
+
+1. **File → New Project → Version Control → Git**, and paste this repository's URL.
+2. In the console, run `source("setup/check_server.R")`. Every line should be `ok`;
+   if one says `FAIL`, tell us before the session rather than during it.
+
+### On your own machine
 
 Install [pixi](https://pixi.sh), then:
 
@@ -45,11 +52,10 @@ pixi run rstudio
 `03a` is the run-and-comment report: students execute the document, write their
 own interpretation under each result, and hand in the rendered HTML.
 
-`03b` is new for 2026 and is where they stop following along. Two open-ended
-tasks — characterise a factor against a clinical covariate their group picks,
-then drop a modality and ask whether integrating three omics was worth it.
-`*.instructor.Rmd` and `*.solutions.Rmd` are the instructor copies; **do not
-distribute them**.
+`03b` is where you stop following along and write the code yourself. Two
+open-ended tasks — characterise a factor against a clinical covariate your group
+picks, then drop a modality and ask whether integrating three omics was worth it.
+There is no single right answer, and different groups will get different results.
 
 ## Lecture
 
@@ -61,7 +67,7 @@ Renders `lecture/slides.qmd` to a single self-contained `lecture/slides.html`
 (reveal.js). Open it directly in a browser — no server needed. Speaker notes are
 in `::: notes` blocks; press `s` in the browser for the speaker view.
 
-16 slides for a 90-minute session, with three scheduled question pauses marked
+18 slides for a 90-minute session, with three scheduled question pauses marked
 in the notes.
 
 ### Windows
@@ -83,4 +89,4 @@ use **WSL2** (Ubuntu, then pixi inside it) or a course-provided server.
   Verified: MOFA trains to convergence this way on the TCGA-BRCA lab data.
 - Expect one harmless warning during `run_mofa()`: MOFA2 hard-codes 0.7.3 as the
   newest `mofapy2` and the environment ships 0.7.4, so it suggests upgrading.
-  Ignore it — tell students up front so nobody chases it mid-lab.
+  It is harmless: ignore it.

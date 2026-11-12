@@ -19,8 +19,13 @@ Instructor: Paul-Theodor Pyl (NBIS / SciLifeLab)
 ### On the course RStudio Server
 
 1. **File → New Project → Version Control → Git**, and paste this repository's URL.
+   Open it as a *project* (not just the folder): the project's `.Rprofile` is what
+   adds the course's shared R packages and Python.
 2. In the console, run `source("setup/check_server.R")`. Every line should be `ok`;
    if one says `FAIL`, tell us before the session rather than during it.
+
+(For whoever runs the server, and for how both environments are set up and why,
+see [`setup/ENVIRONMENT.md`](setup/ENVIRONMENT.md).)
 
 ### On your own machine
 

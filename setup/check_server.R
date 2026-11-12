@@ -45,29 +45,43 @@ check("home directory free space", {
 })
 
 cat("\n== R packages ==\n")
+# Shared setup built by setup/build_shared_library.R and picked up by .Rprofile.
+root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/scratch/kimn20")
+shared_lib <- file.path(root, "library",
+                        paste0(R.version$major, ".", sub("\\..*", "", R.version$minor)))
+line(if (dir.exists(shared_lib)) "ok" else "info", "shared library", shared_lib)
+line(if (shared_lib %in% .libPaths()) "ok" else "info", "on .libPaths()?",
+     if (shared_lib %in% .libPaths()) "yes" else "no (open the project, not just the folder, so .Rprofile runs)")
+cat("\n")
+
 pkgs <- c("MOFA2", "MOFAdata", "mixOmics", "tidyverse", "data.table",
           "randomForest", "survival", "survminer", "BiocStyle", "rmarkdown",
-          "reticulate", "AnnotationHub", "ensembldb", "MASS", "magick")
+          "reticulate", "AnnotationHub", "ensembldb", "MASS")
 for (p in pkgs) {
-  if (requireNamespace(p, quietly = TRUE)) line("ok", p, as.character(packageVersion(p)))
-  else line("FAIL", p, "not installed")
+  if (requireNamespace(p, quietly = TRUE)) {
+    # Report where it was found: it should be the shared library, not a stray copy.
+    line("ok", p, sprintf("%s  [%s]", as.character(packageVersion(p)),
+                          basename(dirname(dirname(find.package(p))))))
+  } else line("FAIL", p, "not installed")
 }
 line("info", ".libPaths()[1]", .libPaths()[1])
+if ("BiocVersion" %in% rownames(installed.packages())) {
+  line("info", "BiocVersion in use", as.character(packageVersion("BiocVersion")))
+}
 
 cat("\n== Python backend for MOFA2 ==\n")
 # The labs call run_mofa(use_basilisk = FALSE), which needs mofapy2 importable
-# from the python reticulate picks. On system R that is usually NOT the case.
+# from the Python reticulate picks. On the course server that is the shared venv
+# that .Rprofile points RETICULATE_PYTHON at.
+line("info", "RETICULATE_PYTHON", Sys.getenv("RETICULATE_PYTHON", unset = "(not set)"))
 if (requireNamespace("reticulate", quietly = TRUE)) {
   check("reticulate python", reticulate::py_config()$python)
   check("mofapy2 importable (basilisk = FALSE)", {
     reticulate::import("mofapy2"); "import ok"
   })
-}
-if (requireNamespace("basilisk", quietly = TRUE)) {
-  line("info", "basilisk installed", as.character(packageVersion("basilisk")))
-  line("info", "=> fallback", "use_basilisk = TRUE needs outbound internet + a per-user download")
 } else {
-  line("info", "basilisk", "not installed (only matters if mofapy2 is missing above)")
+  # Do not skip silently: without reticulate nobody can tell whether MOFA will run.
+  line("FAIL", "reticulate", "not installed, so mofapy2 cannot be tested")
 }
 
 cat("\n== Network (outbound, from this server) ==\n")

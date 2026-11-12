@@ -117,7 +117,23 @@ project and run:
 source("setup/check_server.R")
 ```
 
-Each package line shows where it was found, which should be the shared library.
+Each package line shows where it was found: `shared library` or `R core`. A
+`WARN` means a non-core package came from somewhere else.
+
+Two checks need no second account and catch most problems. Run them from the
+repository root:
+
+```bash
+# The check with the instructor's personal library removed, as a student sees it.
+R_LIBS_USER=/nonexistent Rscript -e 'source("setup/check_server.R")' 2>&1 | grep -E "FAIL|WARN|Everything|Gaps"
+
+# Files under the shared folder that other users cannot read or enter (want no output).
+find /scratch/kimn20 ! -perm -o=r | head
+find /scratch/kimn20 -type d ! -perm -o=x | head
+```
+
+These do not replace a real test from another account, since they cannot show a
+mount, ACL or SELinux restriction.
 
 ## Troubleshooting
 

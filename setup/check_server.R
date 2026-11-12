@@ -57,11 +57,20 @@ cat("\n")
 pkgs <- c("MOFA2", "MOFAdata", "mixOmics", "tidyverse", "data.table",
           "randomForest", "survival", "survminer", "BiocStyle", "rmarkdown",
           "reticulate", "AnnotationHub", "ensembldb", "MASS")
+ip   <- installed.packages()
+core <- rownames(ip)[ip[, "Priority"] %in% c("base", "recommended")]  # ships with R itself
+has_shared <- dir.exists(shared_lib)
 for (p in pkgs) {
   if (requireNamespace(p, quietly = TRUE)) {
-    # Report where it was found: it should be the shared library, not a stray copy.
-    line("ok", p, sprintf("%s  [%s]", as.character(packageVersion(p)),
-                          basename(dirname(dirname(find.package(p))))))
+    from <- normalizePath(dirname(find.package(p)))
+    origin <- if (has_shared && from == normalizePath(shared_lib)) "shared library"
+              else if (p %in% core) "R core"
+              else from
+    # With a shared library present, any non-core package from elsewhere (a
+    # personal or host library) is suspect: it may be a stale or unreadable copy.
+    stray <- has_shared && !(p %in% core) && origin != "shared library"
+    line(if (stray) "WARN" else "ok", p,
+         sprintf("%s  [%s]", as.character(packageVersion(p)), origin))
   } else line("FAIL", p, "not installed")
 }
 line("info", ".libPaths()[1]", .libPaths()[1])

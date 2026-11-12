@@ -74,6 +74,9 @@ if ("r" %in% STEPS) {
 
   options(repos = c(CRAN = "https://cloud.r-project.org"), Ncpus = NCPUS, timeout = 1200)
   Sys.setenv(MAKEFLAGS = paste0("-j", NCPUS))
+  # fs (needed by sass, bslib, rmarkdown, tidyverse, ...) wants the libuv headers,
+  # which need the -devel package. Having no root, let it build its own static copy.
+  Sys.setenv(USE_BUNDLED_LIBUV = "1")
 
   if (!dir.exists(file.path(LIB, "BiocManager")))
     install.packages("BiocManager", lib = LIB)
@@ -112,7 +115,10 @@ if ("r" %in% STEPS) {
     BiocManager::install(todo, lib = LIB, ask = FALSE, update = FALSE, force = TRUE, Ncpus = NCPUS)
 
   missing <- closure[!dir.exists(file.path(LIB, closure))]
-  if (length(missing)) fail("not installed into", LIB, ":", paste(missing, collapse = ", "))
+  if (length(missing))
+    fail("not installed into", LIB, ":", paste(missing, collapse = ", "),
+         "\n  Most of these are usually victims of one failure further up. The causes are:",
+         "\n    grep -E '^ERROR: (configuration|compilation) failed' build.log")
   say("R packages done")
 }
 

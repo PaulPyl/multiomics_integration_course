@@ -25,6 +25,14 @@ rstudio = "open -n -a RStudio ."
 # started from (knitting from labs/ sets the cwd to labs/).
 R_LIBS_USER       = "$PIXI_PROJECT_ROOT/.Rlibrary"
 RETICULATE_PYTHON = "$PIXI_PROJECT_ROOT/.pixi/envs/default/bin/python"
+# Cut off any site library inherited from the host. RStudio Server's terminal
+# exports R_LIBS_SITE pointing at the *system* R's libraries (R 4.6 there), and
+# pixi's R (4.5) would then search them ahead of its own: a stale BiocVersion
+# there made BiocManager pick a Bioconductor release that does not match this R,
+# and any package present in both places would load the wrong build. An empty
+# value means "no site library" (R's Renviron only applies its default when the
+# variable is unset, not when it is empty).
+R_LIBS_SITE       = ""
 
 [dependencies]
 # --- core ---

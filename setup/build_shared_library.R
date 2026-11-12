@@ -22,8 +22,8 @@
 
 # ---- settings (override with environment variables) -------------------------
 ROOT         <- Sys.getenv("KIMN20_SHARED_ROOT",  unset = "/scratch/kimn20")
-# The Bioconductor release matching this R. If it is wrong BiocManager stops and
-# names the right one, so just set KIMN20_BIOC_VERSION and re-run.
+# The Bioconductor release matching this R. If it is wrong the build stops with a
+# message about the mismatch; set KIMN20_BIOC_VERSION to the right one and re-run.
 BIOC_VERSION <- Sys.getenv("KIMN20_BIOC_VERSION", unset = "3.23")
 NCPUS        <- as.integer(Sys.getenv("KIMN20_NCPUS", unset = "32"))
 STEPS        <- strsplit(Sys.getenv("KIMN20_STEPS", unset = "r,python,perms,verify"), ",")[[1]]
@@ -75,9 +75,22 @@ if ("r" %in% STEPS) {
   if (!dir.exists(file.path(LIB, "BiocManager")))
     install.packages("BiocManager", lib = LIB)
 
+  # Select the Bioconductor release by putting its BiocVersion first on the path.
+  # Not by passing version= to BiocManager::install(): that treats it as a version
+  # *change* and refuses unless every older package it can see is upgraded first,
+  # including the host's own, which cannot be written to. BiocVersion is a tiny
+  # pure-R package, so it is installed straight from that release's repository.
+  if (!dir.exists(file.path(LIB, "BiocVersion"))) {
+    say("installing BiocVersion", BIOC_VERSION)
+    install.packages("BiocVersion", lib = LIB, type = "source",
+                     repos = sprintf("https://bioconductor.org/packages/%s/bioc", BIOC_VERSION))
+  }
+  if (!dir.exists(file.path(LIB, "BiocVersion")))
+    fail("BiocVersion", BIOC_VERSION, "could not be installed; is KIMN20_BIOC_VERSION right for this R?")
+  say("Bioconductor release in use:", as.character(BiocManager::version()))
+
   say("installing", length(PACKAGES), "packages plus dependencies; this takes a while")
-  BiocManager::install(PACKAGES, lib = LIB, version = BIOC_VERSION,
-                       ask = FALSE, update = FALSE, Ncpus = NCPUS)
+  BiocManager::install(PACKAGES, lib = LIB, ask = FALSE, update = FALSE, Ncpus = NCPUS)
 
   missing <- PACKAGES[!dir.exists(file.path(LIB, PACKAGES))]
   if (length(missing)) fail("not installed into", LIB, ":", paste(missing, collapse = ", "))

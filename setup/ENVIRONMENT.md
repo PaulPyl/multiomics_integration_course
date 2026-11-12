@@ -68,7 +68,7 @@ KIMN20_STEPS=python,perms Rscript setup/build_shared_library.R
 ```
 
 `KIMN20_BIOC_VERSION` selects the Bioconductor release. If it does not match the
-R version, `BiocManager` stops and names the right one.
+R version, the build stops with a message about the mismatch.
 
 ### How students pick it up
 
@@ -81,6 +81,12 @@ the folder is opened as an RStudio *project*.
 
 - **Prepended, not appended.** The system library can hold an older
   `BiocVersion` that would otherwise be found first.
+- **The Bioconductor release is chosen by installing `BiocVersion` first**, not by
+  passing `version =` to `BiocManager::install()`. With a package list,
+  `version =` is treated as a version *change* and refused until every older
+  package `BiocManager` can see has been upgraded, including the host's own, which
+  cannot be written to. `BiocVersion` is installed straight from that release's
+  repository into the shared library, where it is found first.
 - **The instructor's own library is excluded while building.** `install.packages`
   treats anything it can already see as satisfied. A dependency sitting in a
   personal library would be skipped, and students could not read it.

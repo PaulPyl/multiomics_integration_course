@@ -8,6 +8,9 @@
 .RData
 .Rproj.user/
 
+# log written by setup/build_shared_library.R
+build.log
+
 # Instructor-only material is a separate, private repository cloned into this
 # folder. It must never be committed here: this repository is public, and
 # deleting a file from a public repository does not remove it from its history.

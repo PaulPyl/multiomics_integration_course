@@ -36,6 +36,9 @@ PACKAGES <- c(
   # Bioconductor
   "MOFA2", "MOFAdata", "mixOmics", "BiocStyle", "AnnotationHub", "ensembldb"
 )
+# A shorter list, for testing the build logic quickly.
+if (nzchar(Sys.getenv("KIMN20_PACKAGES")))
+  PACKAGES <- strsplit(Sys.getenv("KIMN20_PACKAGES"), ",")[[1]]
 
 # ---- derived ---------------------------------------------------------------
 rver <- paste0(R.version$major, ".", sub("\\..*", "", R.version$minor))
@@ -89,10 +92,26 @@ if ("r" %in% STEPS) {
     fail("BiocVersion", BIOC_VERSION, "could not be installed; is KIMN20_BIOC_VERSION right for this R?")
   say("Bioconductor release in use:", as.character(BiocManager::version()))
 
-  say("installing", length(PACKAGES), "packages plus dependencies; this takes a while")
-  BiocManager::install(PACKAGES, lib = LIB, ask = FALSE, update = FALSE, Ncpus = NCPUS)
+  # Install the COMPLETE dependency set, not only the packages listed above.
+  # install.packages() skips any dependency it can already see, and the host's own
+  # library can hold copies built for a different R that look installed but crash
+  # on load (e.g. vctrs, htmltools, GenomeInfoDb). So every non-core package the
+  # labs need is installed here, and only what ships with R itself is left alone.
+  repos <- BiocManager::repositories()
+  db    <- available.packages(repos = repos, type = "source")
+  deps  <- tools::package_dependencies(PACKAGES, db = db, recursive = TRUE,
+                                       which = c("Depends", "Imports", "LinkingTo"))
+  ip    <- installed.packages()
+  core  <- rownames(ip)[ip[, "Priority"] %in% c("base", "recommended")]
+  closure <- setdiff(unique(c(PACKAGES, unlist(deps, use.names = FALSE))), core)
+  todo    <- setdiff(closure, rownames(installed.packages(lib.loc = LIB)))
 
-  missing <- PACKAGES[!dir.exists(file.path(LIB, PACKAGES))]
+  say(length(PACKAGES), "requested,", length(closure), "with dependencies,",
+      length(todo), "still to install; this takes a while")
+  if (length(todo))
+    BiocManager::install(todo, lib = LIB, ask = FALSE, update = FALSE, force = TRUE, Ncpus = NCPUS)
+
+  missing <- closure[!dir.exists(file.path(LIB, closure))]
   if (length(missing)) fail("not installed into", LIB, ":", paste(missing, collapse = ", "))
   say("R packages done")
 }
@@ -127,10 +146,27 @@ if ("verify" %in% STEPS) {
   }
   cat(sprintf("  %-15s %s\n", "BiocVersion", tryCatch(as.character(packageVersion("BiocVersion")), error = function(e) "missing")))
 
-  Sys.setenv(RETICULATE_PYTHON = file.path(VENV, "bin", "python"))
-  has_mofapy2 <- tryCatch(reticulate::py_module_available("mofapy2"), error = function(e) FALSE)
-  cat(sprintf("  %-15s %s\n", "mofapy2 (py)", if (has_mofapy2) "importable" else "NOT importable"))
-  if (!has_mofapy2) ok <- FALSE
+  # Nothing outside R itself may have been loaded from anywhere but the shared
+  # library: a stale copy in the host's library can load fine here and still
+  # misbehave later.
+  ip    <- installed.packages()
+  core  <- rownames(ip)[ip[, "Priority"] %in% c("base", "recommended")]
+  loaded <- setdiff(loadedNamespaces(), core)
+  where  <- vapply(loaded, function(p) normalizePath(dirname(getNamespaceInfo(p, "path"))), character(1))
+  stray  <- loaded[where != normalizePath(LIB)]
+  if (length(stray)) {
+    ok <- FALSE
+    cat("  loaded from outside the shared library:\n")
+    for (p in stray) cat(sprintf("    %-20s %s\n", p, where[[p]]))
+  } else cat(sprintf("  all %d loaded non-core packages come from the shared library\n", length(loaded)))
+
+  py <- file.path(VENV, "bin", "python")
+  if (file.exists(py)) {
+    Sys.setenv(RETICULATE_PYTHON = py)
+    has_mofapy2 <- tryCatch(reticulate::py_module_available("mofapy2"), error = function(e) FALSE)
+    cat(sprintf("  %-15s %s\n", "mofapy2 (py)", if (has_mofapy2) "importable" else "NOT importable"))
+    if (!has_mofapy2) ok <- FALSE
+  } else cat("  (no venv yet, Python check skipped)\n")
 
   if (!ok) fail("verification found problems, see above")
   say("all good. Now test as a *different* user: source('setup/check_server.R') from a student account.")

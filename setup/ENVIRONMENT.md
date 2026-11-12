@@ -87,6 +87,14 @@ the folder is opened as an RStudio *project*.
   package `BiocManager` can see has been upgraded, including the host's own, which
   cannot be written to. `BiocVersion` is installed straight from that release's
   repository into the shared library, where it is found first.
+- **Every dependency is installed, not just the listed packages.** The host's own
+  library can contain copies built for a different R (seen: `vctrs`, `htmltools`,
+  `GenomeInfoDb`). They look installed, so `install.packages` skips them as
+  already-satisfied dependencies, and then they crash on load (`undefined symbol:
+  SETLENGTH`) or lack newer classes. The build therefore computes the full
+  dependency closure and installs all of it, leaving alone only the packages that
+  ship with R itself. The `verify` step then checks that nothing outside R's core
+  was loaded from anywhere but the shared library.
 - **The instructor's own library is excluded while building.** `install.packages`
   treats anything it can already see as satisfied. A dependency sitting in a
   personal library would be skipped, and students could not read it.
@@ -117,5 +125,7 @@ Each package line shows where it was found, which should be the shared library.
 |---|---|
 | `Bioconductor version '3.xx' requires R version ...` | A stale `BiocVersion` from another library is visible. Check `.libPaths()`; under pixi `pixi run check` reports this. |
 | `mofapy2 ... is not detected` | reticulate is not using the intended Python. Run `reticulate::py_config()`; the path should be under `.pixi/` (pixi) or `venv/` (shared). |
+| `undefined symbol: SETLENGTH` (or similar) while building or loading | A package built for an older R is being picked up from the host's library. The build avoids this by installing the whole dependency set; if it appears, delete the shared library for that R version and rebuild. |
+| `class "..." is not exported by 'namespace:...'` | A stale Bioconductor package from another library is shadowing the right one. Same remedy. |
 | Students see no packages | The folder was opened without the project, so `.Rprofile` did not run; or the shared directory is not readable by them. |
 | A package is "not installed" for students only | It was present only in the instructor's personal library, which is why the build excludes that library. |

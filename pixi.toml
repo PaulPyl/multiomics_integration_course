@@ -71,3 +71,11 @@ bioconductor-ensembldb = "*"
 # never need basilisk to download its own environment at lab time.
 mofapy2 = "*"
 python = "3.12.*"
+# Not used directly. reticulate treats any Python inside a conda-style env (one
+# with conda-meta/) as a conda env and, before loading it, runs `conda run` to
+# compute its PATH. With no conda/mamba/micromamba on PATH that fails, reticulate
+# quietly discards RETICULATE_PYTHON and falls back to a scratch Python that has
+# no mofapy2, and run_mofa() then reports "mofapy2 is not detected". reticulate's
+# find_conda() accepts micromamba, so shipping it in the env makes the pixi Python
+# usable on machines that have no conda of their own.
+micromamba = ">=2.10.0,<3"

@@ -145,5 +145,6 @@ mount, ACL or SELinux restriction.
 | `class "..." is not exported by 'namespace:...'` | A stale Bioconductor package from another library is shadowing the right one. Same remedy. |
 | `uv.h: No such file or directory`, then `configuration failed for package 'fs'` | The libuv headers (a `-devel` package) are not installed. The build sets `USE_BUNDLED_LIBUV=1` so `fs` compiles its own copy. `sass`, `bslib`, `rmarkdown` and `tidyverse` all fail as a cascade when `fs` does. |
 | A long list of packages "not installed" at the end of a build | Usually victims of one or two root failures. `grep -E '^ERROR: (configuration\|compilation) failed' build.log` shows the causes. |
+| `(venv)` appears in RStudio's Terminal tab, but not over ssh | Expected. RStudio's terminal activates the Python that `RETICULATE_PYTHON` (set by `.Rprofile`) points at. It is cosmetic for students, who cannot write to the shared venv. The owner should `deactivate` before any `pip install`. To turn it off: Tools → Global Options → Terminal. |
 | Students see no packages | The folder was opened without the project, so `.Rprofile` did not run; or the shared directory is not readable by them. |
 | A package is "not installed" for students only | It was present only in the instructor's personal library, which is why the build excludes that library. |

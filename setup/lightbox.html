@@ -1,0 +1,56 @@
+<!-- Click-to-enlarge figures for the lab documents.
+     Include from a document's YAML header:
+
+       output:
+         BiocStyle::html_document:
+           includes:
+             in_header: ../setup/lightbox.html
+
+     Self-contained (no CDN), so it works offline and behind a firewall.
+     Click a figure to enlarge it; click again or press Esc to close. -->
+<style>
+  img.kimn-zoomable { cursor: zoom-in; }
+  .kimn-lightbox {
+    position: fixed; inset: 0; z-index: 100000;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0, 0, 0, 0.86); cursor: zoom-out;
+  }
+  .kimn-lightbox img {
+    max-width: 96vw; max-height: 96vh; width: auto; height: auto;
+    background: #fff; border-radius: 3px; box-shadow: 0 6px 40px rgba(0, 0, 0, 0.5);
+  }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var MIN_WIDTH = 200;  // skip icons and logos
+
+  function close() {
+    var open = document.querySelector(".kimn-lightbox");
+    if (open) open.remove();
+  }
+
+  function openFor(img) {
+    close();
+    var overlay = document.createElement("div");
+    overlay.className = "kimn-lightbox";
+    var big = document.createElement("img");
+    big.src = img.currentSrc || img.src;
+    big.alt = img.alt || "";
+    overlay.appendChild(big);
+    overlay.addEventListener("click", close);
+    document.body.appendChild(overlay);
+  }
+
+  document.querySelectorAll("img").forEach(function (img) {
+    if (img.closest("#TOC, .toc, nav, .navbar")) return;
+    function arm() {
+      if (img.naturalWidth < MIN_WIDTH) return;
+      img.classList.add("kimn-zoomable");
+      img.addEventListener("click", function () { openFor(img); });
+    }
+    if (img.complete) arm(); else img.addEventListener("load", arm);
+  });
+
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+});
+</script>

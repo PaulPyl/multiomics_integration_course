@@ -8,10 +8,13 @@ output:
     tox_depth: 3
     df_print: paged
     code_folding: show
+    includes:
+      in_header: ../setup/lightbox.html
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+source("../setup/knitr_helpers.R")  # adds the `summary` chunk option (collapsible output)
 ```
 
 # Assignment
@@ -128,8 +131,11 @@ MOFAobject <- prepare_mofa(MOFAobject,
 )
 ```
 
-```{r}
-MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_breast.TCGA.hdf5", use_basilisk = FALSE)
+```{r, summary="MOFA training log"}
+# show_python_output() prints the training log so the `summary` option can fold it.
+show_python_output(
+  MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_breast.TCGA.hdf5", use_basilisk = FALSE)
+)
 ```
 
 ```{r}

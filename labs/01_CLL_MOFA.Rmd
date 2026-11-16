@@ -11,11 +11,17 @@ date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
     toc_float: true
+    includes:
+      in_header: ../setup/lightbox.html
 vignette: >
   %\VignetteIndexEntry{MOFA2: Applying MOFA2 to the Chronic Lymphocytic Leukemia cohort}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
+
+```{r setup, include=FALSE}
+source("../setup/knitr_helpers.R")  # adds the `summary` chunk option (collapsible output)
+```
 
 **This document is in essence identical to the one linked on the MOFA webpage with some minor modifications. Find the original here: https://raw.githack.com/bioFAM/MOFA2_tutorials/master/R_tutorials/CLL.html**
 
@@ -149,7 +155,7 @@ MOFAobject <- prepare_mofa(MOFAobject,
 
 Train the model: this should take \~2min
 
-```{r, message=FALSE, warning=FALSE}
+```{r, message=FALSE, warning=FALSE, summary="MOFA training log"}
 # NOTE: The software has evolved since the original publication and the results will not be 100% identical to the original publication, please use the pretrained model if you are running through the vignette for the fist time
 
 usePrecomputed <- TRUE #Change this if you want to run the computation yourself ... it will take some time
@@ -159,7 +165,9 @@ usePrecomputed <- TRUE #Change this if you want to run the computation yourself 
 precomputedPath <- "../data/MOFA2_CLL.rds"
 
 if(!usePrecomputed){
-  MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_CLL.hdf5", use_basilisk = FALSE)
+  show_python_output(
+    MOFAobject <- run_mofa(MOFAobject, outfile="MOFA2_CLL.hdf5", use_basilisk = FALSE)
+  )
   saveRDS(MOFAobject,"MOFA2_CLL.rds")
 }else{
   if(!file.exists(precomputedPath)){

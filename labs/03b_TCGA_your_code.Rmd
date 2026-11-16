@@ -9,10 +9,13 @@ output:
     toc_depth: 3
     df_print: paged
     code_folding: show
+    includes:
+      in_header: ../setup/lightbox.html
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+source("../setup/knitr_helpers.R")  # adds the `summary` chunk option (collapsible output)
 ```
 
 # What this document is
@@ -114,8 +117,11 @@ fit_mofa <- function(views = names(X), num_factors = 10, seed = 42) {
     model_options    = model_opts,
     training_options = train_opts
   )
-  obj <- run_mofa(obj, outfile = tempfile(fileext = ".hdf5"),
-                  use_basilisk = FALSE)
+  # run_mofa() prints its training log through Python. Discard it: task 2 fits
+  # seven models, which would otherwise print it seven times.
+  quiet_python_output(
+    obj <- run_mofa(obj, outfile = tempfile(fileext = ".hdf5"), use_basilisk = FALSE)
+  )
 
   # Attach subtype and the clinical columns to the model's sample metadata.
   samples_metadata(obj) <- samples_metadata(obj) |>

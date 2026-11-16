@@ -8,6 +8,8 @@ date: "`r Sys.Date()`"
 output:
   BiocStyle::html_document:
     toc_float: true
+    includes:
+      in_header: ../setup/lightbox.html
 ---
 
 **This document is an attempt to replicate the analysis form the one linked on the MOFA webpage using mixOmics Diablo approach instead. Find the original here: https://raw.githack.com/bioFAM/MOFA2_tutorials/master/R_tutorials/CLL.html**

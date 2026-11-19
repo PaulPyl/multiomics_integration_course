@@ -135,6 +135,37 @@ find /scratch/kimn20 -type d ! -perm -o=x | head
 These do not replace a real test from another account, since they cannot show a
 mount, ACL or SELinux restriction.
 
+## System-wide install (administrator)
+
+The same script can install into the standard system locations, so nothing
+depends on a scratch area that might be cleaned. Run it as root, once:
+
+```bash
+KIMN20_LIB=/usr/local/lib/R/site-library \
+KIMN20_VENV=/usr/local/share/kimn20/venv \
+  Rscript setup/build_shared_library.R
+
+echo 'RETICULATE_PYTHON=/usr/local/share/kimn20/venv/bin/python' \
+  >> "$(Rscript -e 'cat(R.home("etc"))')/Renviron.site"
+```
+
+- **Why `/usr/local/lib/R/site-library`:** R lists it in `R_LIBS_SITE` ahead of
+  the system library, so every user picks it up and it shadows older copies. No
+  `.Rprofile` involvement is needed for the packages.
+- **Python:** `RETICULATE_PYTHON` comes from `Renviron.site`. `.Rprofile` only
+  sets it when it is empty, so the two do not conflict.
+- **Not from the OS package manager.** Distribution packages for these libraries
+  can lag R or be built for an older one, and Bioconductor's current release is
+  generally not packaged at all.
+- **The directory is not versioned.** When R moves to a new minor version, empty
+  it and run the command again; packages built for the old R will not load.
+- **Stale packages already in the system library** are a separate problem: ones
+  installed for an earlier R survive an in-place R upgrade. See which with
+  `table(installed.packages(lib.loc = "/usr/lib64/R/library")[, "Built"])`; anything
+  older than the running R was built for another version.
+- **If the per-folder copy also exists**, `.Rprofile` keeps prepending it ahead of
+  the system-wide one. Remove it once the system-wide install is verified.
+
 ## Troubleshooting
 
 | Symptom | Cause |

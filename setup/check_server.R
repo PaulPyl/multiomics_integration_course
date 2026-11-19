@@ -49,9 +49,16 @@ cat("\n== R packages ==\n")
 root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/scratch/kimn20")
 shared_lib <- file.path(root, "library",
                         paste0(R.version$major, ".", sub("\\..*", "", R.version$minor)))
-line(if (dir.exists(shared_lib)) "ok" else "info", "shared library", shared_lib)
-line(if (shared_lib %in% .libPaths()) "ok" else "info", "on .libPaths()?",
-     if (shared_lib %in% .libPaths()) "yes" else "no (open the project, not just the folder, so .Rprofile runs)")
+# Where the shared packages may live: the per-folder build above, a location named
+# by KIMN20_LIB, or a system-wide site library (the default for a root install).
+candidates  <- unique(c(shared_lib, Sys.getenv("KIMN20_LIB"), "/usr/local/lib/R/site-library"))
+shared_libs <- normalizePath(Filter(function(d) nzchar(d) && dir.exists(d), candidates))
+for (d in shared_libs) {
+  line("ok", "shared library", d)
+  line(if (d %in% normalizePath(.libPaths())) "ok" else "info", "on .libPaths()?",
+       if (d %in% normalizePath(.libPaths())) "yes" else "no (open the project, not just the folder, so .Rprofile runs)")
+}
+if (!length(shared_libs)) line("info", "shared library", "none found (fine if you use pixi)")
 cat("\n")
 
 pkgs <- c("MOFA2", "MOFAdata", "mixOmics", "tidyverse", "data.table",
@@ -59,11 +66,11 @@ pkgs <- c("MOFA2", "MOFAdata", "mixOmics", "tidyverse", "data.table",
           "reticulate", "AnnotationHub", "ensembldb", "MASS")
 ip   <- installed.packages()
 core <- rownames(ip)[ip[, "Priority"] %in% c("base", "recommended")]  # ships with R itself
-has_shared <- dir.exists(shared_lib)
+has_shared <- length(shared_libs) > 0
 for (p in pkgs) {
   if (requireNamespace(p, quietly = TRUE)) {
     from <- normalizePath(dirname(find.package(p)))
-    origin <- if (has_shared && from == normalizePath(shared_lib)) "shared library"
+    origin <- if (has_shared && from %in% shared_libs) "shared library"
               else if (p %in% core) "R core"
               else from
     # With a shared library present, any non-core package from elsewhere (a

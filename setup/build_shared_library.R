@@ -10,6 +10,10 @@
 #   venv/                        a Python venv containing mofapy2
 # .Rprofile in the repository adds both for students automatically.
 #
+# System-wide install (as root): set KIMN20_LIB and KIMN20_VENV to the final
+# locations instead, and set RETICULATE_PYTHON for all users in R's Renviron.site.
+# See setup/ENVIRONMENT.md.
+#
 # Re-runnable: packages already in the library are not rebuilt. To redo just one
 # part, set KIMN20_STEPS, e.g.  KIMN20_STEPS=python,perms Rscript setup/build_shared_library.R
 #
@@ -42,8 +46,11 @@ if (nzchar(Sys.getenv("KIMN20_PACKAGES")))
 
 # ---- derived ---------------------------------------------------------------
 rver <- paste0(R.version$major, ".", sub("\\..*", "", R.version$minor))
-LIB  <- file.path(ROOT, "library", rver)
-VENV <- file.path(ROOT, "venv")
+# Default: both live under ROOT. For a system-wide install, point them at the
+# final locations instead (run as root), e.g.
+#   KIMN20_LIB=/usr/local/lib/R/site-library KIMN20_VENV=/usr/local/share/kimn20/venv
+LIB  <- Sys.getenv("KIMN20_LIB",  unset = file.path(ROOT, "library", rver))
+VENV <- Sys.getenv("KIMN20_VENV", unset = file.path(ROOT, "venv"))
 
 say  <- function(...) cat(format(Sys.time(), "%H:%M:%S"), "|", ..., "\n")
 fail <- function(...) { say("FAILED:", ...); quit(status = 1) }
@@ -137,7 +144,9 @@ if ("python" %in% STEPS) {
 # ---- 3. permissions ---------------------------------------------------------
 if ("perms" %in% STEPS) {
   say("permissions: world-readable, writable by nobody but the owner")
-  run("chmod", c("-R", "a+rX,go-w", shQuote(ROOT)))
+  # Only what this script created. LIB can be a directory shared with other
+  # software (e.g. a system site-library), so never touch its parents.
+  for (d in c(LIB, VENV)) if (dir.exists(d)) run("chmod", c("-R", "a+rX,go-w", shQuote(d)))
 }
 
 # ---- 4. verify, the way a student's session would see it ---------------------

@@ -19,7 +19,7 @@ local({
 local({
   if (nzchar(Sys.getenv("PIXI_PROJECT_ROOT"))) return(invisible(NULL))  # pixi manages it all
 
-  root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/scratch/kimn20")
+  root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/opt/kimn20/multiomics")
   rver <- paste0(R.version$major, ".", sub("\\..*", "", R.version$minor))  # packages are per R minor version
 
   lib <- file.path(root, "library", rver)

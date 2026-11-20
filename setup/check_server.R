@@ -46,7 +46,7 @@ check("home directory free space", {
 
 cat("\n== R packages ==\n")
 # Shared setup built by setup/build_shared_library.R and picked up by .Rprofile.
-root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/scratch/kimn20")
+root <- Sys.getenv("KIMN20_SHARED_ROOT", unset = "/opt/kimn20/multiomics")
 shared_lib <- file.path(root, "library",
                         paste0(R.version$major, ".", sub("\\..*", "", R.version$minor)))
 # Where the shared packages may live: the per-folder build above, a location named

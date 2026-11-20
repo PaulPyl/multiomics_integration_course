@@ -5,7 +5,7 @@
 #   nohup Rscript setup/build_shared_library.R > build.log 2>&1 &
 #   tail -f build.log
 #
-# It produces, under KIMN20_SHARED_ROOT (default /scratch/kimn20):
+# It produces, under KIMN20_SHARED_ROOT (default /opt/kimn20/multiomics):
 #   library/<R minor version>/   every R package the labs need
 #   venv/                        a Python venv containing mofapy2
 # .Rprofile in the repository adds both for students automatically.
@@ -25,7 +25,7 @@
 # also does not need a conda binary to use it.
 
 # ---- settings (override with environment variables) -------------------------
-ROOT         <- Sys.getenv("KIMN20_SHARED_ROOT",  unset = "/scratch/kimn20")
+ROOT         <- Sys.getenv("KIMN20_SHARED_ROOT",  unset = "/opt/kimn20/multiomics")
 # The Bioconductor release matching this R. If it is wrong the build stops with a
 # message about the mismatch; set KIMN20_BIOC_VERSION to the right one and re-run.
 BIOC_VERSION <- Sys.getenv("KIMN20_BIOC_VERSION", unset = "3.23")

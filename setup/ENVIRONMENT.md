@@ -42,10 +42,12 @@ RStudio Server uses the server's system R, which cannot be switched to pixi's R
 without administrator settings. So the packages are built once into a read-only
 directory that every student's session adds to its library path.
 
-Default location: `/scratch/kimn20` (change it with `KIMN20_SHARED_ROOT`).
+Default location: `/opt/kimn20/multiomics` (change it with `KIMN20_SHARED_ROOT`).
+`/opt/kimn20` is owned by root, writable by the `kimn20` group and readable by
+everyone; other teachers get write access by being added to that group.
 
 ```
-/scratch/kimn20/
+/opt/kimn20/multiomics/
   library/<R minor version>/   R packages, e.g. library/4.6/
   venv/                        Python venv containing mofapy2
 ```
@@ -128,8 +130,8 @@ repository root:
 R_LIBS_USER=/nonexistent Rscript -e 'source("setup/check_server.R")' 2>&1 | grep -E "FAIL|WARN|Everything|Gaps"
 
 # Files under the shared folder that other users cannot read or enter (want no output).
-find /scratch/kimn20 ! -perm -o=r | head
-find /scratch/kimn20 -type d ! -perm -o=x | head
+find /opt/kimn20/multiomics ! -perm -o=r | head
+find /opt/kimn20/multiomics -type d ! -perm -o=x | head
 ```
 
 These do not replace a real test from another account, since they cannot show a
